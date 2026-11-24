@@ -1,46 +1,56 @@
 <div align="center">
 
-# 回梦游仙 · 青春版 (Dream Wanderer)
+# 回梦游仙 · 青春版 v2.0 (Dream Wanderer)
 
-**《仙剑奇侠传四》「冰火琼华·登顶卷云台」 × 《艾尔登法环》越肩 3D 魂系动作网页游戏**
+**《仙剑奇侠传四》「冰火琼华·登顶卷云台」 × 《艾尔登法环》动漫写实级 3D 魂系动作网页游戏**
 
-[![在线试玩 GitHub Pages](https://img.shields.io/badge/🎮_在线试玩-踏入琼华山门-d4af6a?style=for-the-badge)](https://finn-fengming.github.io/Dream-Wanderer/)
+[![在线试玩 GitHub Pages](https://img.shields.io/badge/🎮_在线试玩_v2.0-踏入琼华山门-d4af6a?style=for-the-badge)](https://finn-fengming.github.io/Dream-Wanderer/)
 [![直达玄霄决战](https://img.shields.io/badge/⚔️_直达决战-卷云台战玄霄-b82824?style=for-the-badge)](https://finn-fengming.github.io/Dream-Wanderer/?stage=boss)
-[![单文件离线版](https://img.shields.io/badge/📦_单文件离线版-696_KB_HTML-3a8ec9?style=for-the-badge)](https://finn-fengming.github.io/Dream-Wanderer/%E5%9B%9E%E6%A2%A6%E6%B8%B8%E4%BB%99%C2%B7%E9%9D%92%E6%98%A5%E7%89%88.html)
+[![角色与神兵展台](https://img.shields.io/badge/🗡️_角色神兵展台-VRM动漫建模预览-2b78a8?style=for-the-badge)](https://finn-fengming.github.io/Dream-Wanderer/?show=chars&q=ultra)
 
 <br/>
 
 <a href="https://finn-fengming.github.io/Dream-Wanderer/">
-  <img src="docs/media/title.jpg" width="860" alt="回梦游仙·青春版 主界面" />
+  <img src="docs/media/title.jpg" width="880" alt="回梦游仙·青春版 v2.0 主界面" />
 </a>
 
-*点击上方徽章或封面图即可在浏览器直接开玩（支持键鼠与手机触屏双摇杆，无需安装任何插件）。*
+*点击上方徽章或封面图即可在浏览器直接开玩（支持键鼠与手机触屏双摇杆，全量 3D 模型与动捕资产流式加载）。*
 
 </div>
 
 ---
 
-## ✨ 项目简介
+## ✨ v2.0 动漫写实级美术与引擎全面重构
 
-**《回梦游仙·青春版》** 是一款完全基于 **Three.js (WebGL2) + TypeScript** 从零构建的纯代码 3D 仙侠魂系动作网页游戏。
+**《回梦游仙·青春版》v2.0** 基于 **Three.js (WebGL2) + `@pixiv/three-vrm` + TypeScript** 完成了从底层渲染管线、真实 3D 美术资产、中国古典飞檐建筑群到动漫角色骨骼与动作捕捉的全方位重制，以「**动漫般的真实感（Anime-Realistic）**」重现《仙剑奇侠传四》最震撼的宿命终局——**冰火琼华 · 卷云台决战玄霄**。
 
-项目以《仙剑奇侠传四》最具宿命张力的高潮篇章 **「琼华飞升 · 卷云台决战」** 为舞台，完整复刻了 **《艾尔登法环》（Elden Ring）** 的越肩第三人称硬核动作博弈——从承天断桥的天地灵脉出发，突破寒晶长阶与守门机关巨傀，穿过金色剑幕雾门，迎战由 **「苍岚剑宗」** 入魔化为 **「焚天成魔」** 的双阶段 **玄霄**。
-
-* **零外部重资产，696 KB 单文件装下整座琼华仙山**：无任何外部图片（`.png/.jpg`）、无外部 3D 模型（`.glb/.fbx`）、无外部录音（`.mp3`）。石砖法线、太极八卦阵纹、冰火苍穹着色器、连续 GPU 蒙皮角色、神兵流光与 32 小节《回梦游仙》国风配乐全部由数学与着色器实时生成。
-* **电影级冰火渲染底座**：卷云台半透明寒玉地面挂载 **实时平面反射（Planar Reflection）** 倒映悬空九柄镇派巨剑；配备受控阈值 HDR Bloom、苍穹赤月蚀日天象渐变、相机跟随风雪与羲和流火粒子，以及 ACES Filmic 调色。
-* **原谱级《回梦游仙》多阶段动态国风音律**：内嵌解析自《回梦游仙》完整 32 小节双声部乐谱（262 个主旋律音符 + 232 个古筝分解和弦音符），WebAudio 实时合成空灵竹笛、古筝泛音、战斗琵琶轮指与中国大鼓，随探索、Boss 一阶段、二阶段入魔无缝变奏。
+* **全阵容高精 VRM 动漫角色 + 弹簧骨物理（SpringBone）+ 真实动捕（Mixamo FBX）**：
+  * **云天河、玄霄、韩菱纱、柳梦璃、琼华派执剑弟子/御剑修士** 全部升级为真实高面数 `.vrm` 动漫角色，搭载 **MToon 赛璐璐写实明暗着色**、实时发丝/裙摆 **SpringBone 物理飘动**、动态眨眼与战意怒目表情，以及仙侠束腰玉带、开衩战袍/掌门仙袍与披风挂件。
+  * 中庭精英 **【镇岳剑傀】** 采用真实高精度重甲武士骨骼模型 + 全套 PBR 金属法线贴图；全角色动作由 **12 套真实光学动捕 `.fbx` 序列** 实时重定向驱动，并与魂系前摇/快劈曲线精准耦合。
+* **真实摄影测量昆仑奇峰古松 + 纯正中国古典重檐歇山飞檐建筑群**：
+  * 采集并整合 **85 MB 高品质 3D 模型、HDRI 与 1K PBR 材质库**（含昆仑危崖 `cliff_peak.glb`、悬空奇石 `boulder_01/02.glb`、千年迎客古松 `chinese_pine.glb`、太一仙像 `immortal_statue.glb`、鎏金宫灯 `palace_lantern.glb`、真实月球法线贴图与天光环境探针 `sky_probe.hdr`）。
+  * 构建纯正 **三间五楼「瓊華仙宗」山门牌坊**、**汉白玉云头望柱雕花栏杆**、**断檐观云仙亭** 以及远方层峦托举的三重飞檐 **「太一仙宫」**；所有山石、松枝与琉璃青瓦均挂载 **世界法线昆仑积雪着色器（World-Space Snow Accumulation Shader）**。
+* **电影级动漫写实渲染管线**：
+  * HDRI `PMREM` 环境高光反射 + 跟随角色的 **高分辨率紧致软阴影（PCFSoftShadowMap）** + **2048px 昆仑白玉镶金太极八卦镜面反射（Planar Reflector）** + **UnrealBloom** + **SMAA 抗锯齿** + **动漫鲜活分色调色（ACES Filmic + Split-Toning）**。
+* **原谱级《回梦游仙》32 小节动态国风音律**：
+  * 内嵌《回梦游仙》双声部原谱（262 主旋律音符 + 232 古筝伴奏音符），WebAudio 实时合成竹笛、古筝、琵琶轮指与中国战鼓，随探索、一阶段苍岚、二阶段赤月蚀日无缝变奏。
 
 ---
 
-## 🖼️ 实机画面一览
-
-| 寒晶长阶 · 越肩剑战与高台奇珍 | 卷云台二阶段 · 主角团三人同框战入魔玄霄 |
-| :---: | :---: |
-| ![寒晶长阶实战](docs/media/stairs_combat.jpg) | ![卷云台二阶段决战](docs/media/boss_phase2.jpg) |
-| **越肩锁定执剑弟子、右侧断檐高台【琼浆玉露】光柱与远处镇岳剑傀** | **召唤韩菱纱 & 柳梦璃灵影，迎战展开九柄焚天幻剑翼的玄霄** |
+## 🖼️ v2.0 实机画面一览
 
 <div align="center">
-  <img src="docs/media/victory.jpg" width="860" alt="宿孽获诛 结算画面" />
+  <img src="docs/media/qionghua_vista.jpg" width="880" alt="琼华仙宗五楼飞檐牌坊与昆仑雪松云海" />
+  <p><em>琼华外山门远眺：三间五楼飞檐翘角牌坊、汉白玉望柱栏杆、千年古松与昆仑积雪云海</em></p>
+</div>
+
+| 中庭太极广场 · 越肩迎战重甲【镇岳剑傀】 | 卷云台二阶段 · 菱纱梦璃同框共战【焚天成魔·玄霄】 |
+| :---: | :---: |
+| ![太极中庭实战](docs/media/stairs_combat.jpg) | ![卷云台二阶段决战](docs/media/boss_phase2.jpg) |
+| **云天河挥动寒晶望舒剑，协同对决 3.2m 重甲镇岳剑傀与琼华弟子** | **赤月蚀日天象下，召唤韩菱纱 & 柳梦璃迎战九柄焚天剑翼玄霄** |
+
+<div align="center">
+  <img src="docs/media/victory.jpg" width="880" alt="宿孽获诛 结算画面" />
   <p><em>斩落二阶段玄霄结算演出：「宿 孽 获 诛」书法金字与百年青鸾峰回梦尾声</em></p>
 </div>
 
@@ -80,18 +90,16 @@
 
 ---
 
-## 🔬 隐藏无尘研发检验展台（URL 参数直达）
+## 🔬 研发检验展台（URL 参数直达）
 
-借鉴《Saltline》与《雾锁山门》的模块化自检工程实践，项目内置了多套独立调试展台，点击即可在线查看：
-
-* 🏔️ **场景光影与一/二阶段天象检验台**：[`?show=arena&q=ultra`](https://finn-fengming.github.io/Dream-Wanderer/?show=arena&q=ultra)
-* 🗡️ **仙剑四全角色骨骼、神兵与招式拆解台**：[`?show=chars&q=ultra`](https://finn-fengming.github.io/Dream-Wanderer/?show=chars&q=ultra)
+* 🏔️ **琼华仙境光影与一/二阶段天象检验台**：[`?show=arena&q=ultra`](https://finn-fengming.github.io/Dream-Wanderer/?show=arena&q=ultra)
+* 🗡️ **仙剑四 VRM 全角色、重甲剑傀与神兵拆解台**：[`?show=chars&q=ultra`](https://finn-fengming.github.io/Dream-Wanderer/?show=chars&q=ultra)
 * 🔥 **跳过山道直达卷云台金色雾门前**：[`?stage=boss`](https://finn-fengming.github.io/Dream-Wanderer/?stage=boss)
 * 🛡️ **无敌测招 + F3 实时碰撞/状态面板**：[`?stage=boss&god=1&debug=1`](https://finn-fengming.github.io/Dream-Wanderer/?stage=boss&god=1&debug=1)
 
 ---
 
-## 🛠️ 本地运行与单文件 HTML 打包
+## 🛠️ 本地运行与构建
 
 环境要求：**Node.js 18+**。
 
@@ -102,27 +110,24 @@ npm install
 # 2. 启动本地开发热更新服务器
 npm run dev
 
-# 3. 生产构建（输出至 dist/，供 GitHub Pages 部署）
+# 3. 生产构建（输出至 dist/，含全套 3D 资产供 GitHub Pages 部署）
 npm run build
-
-# 4. 一键内联打包为 696 KB 零外网依赖的单文件 HTML（输出至 dist-single/回梦游仙·青春版.html）
-npm run build:single
 ```
 
 ### 目录结构
 
 ```text
 Dream-Wanderer/
-├── index.html                    # 游戏首屏入口与国风加载动效
-├── scripts/
-│   └── build-single-html.mjs     # 单文件离线 HTML 内联打包脚本
-├── docs/media/                   # 实机运行截图
+├── index.html                    # 游戏首屏入口与实时资产流式加载进度条
+├── public/assets/                # 85MB 真实 3D 美术资产库 (.vrm 角色 / .glb 山石松柏宫灯 / .fbx 动捕 / .hdr / PBR 贴图)
+├── docs/media/                   # v2.0 实机高清截图
 └── src/
-    ├── main.ts                   # 游戏主循环、关卡事件调度与 window.G 自检接口
-    ├── core/                     # WebGL2 半浮点渲染管线(Bloom+ACES)、抗丢键输入器、显卡分档画质
-    ├── camera/                   # 法环式越肩弹簧臂相机、目标软硬锁定与遮挡建筑自动半透明避让
-    ├── world/                    # 程序化青玉/太极八卦贴图烘焙、冰火琼华立体关卡与实时冰面反射
-    ├── entities/                 # GPU SkinnedMesh 仙侠人物蒙皮、望舒/羲和/射日弓建模、敌群令牌 AI、双阶段玄霄与故人灵影
+    ├── main.ts                   # 主循环、异步资产预热调度与 window.G 自检接口
+    ├── assets/assetLoader.ts     # 统一 HDRI/PBR/GLB(Meshopt)/FBX/VRM 异步加载与实例池管理
+    ├── core/                     # WebGL2 渲染管线 (HDRI + HalfFloat MSAA + UnrealBloom + SMAA + 动漫鲜活调色)
+    ├── camera/                   # 法环式越肩弹簧臂相机、目标软硬锁定与建筑半透明遮挡避让
+    ├── world/                    # 中国古典飞檐歇山建筑生成器、世界法线积雪着色器、2K 白玉镶金太极镜面关卡
+    ├── entities/                 # VRM MToon 动漫角色 + Mixamo 动捕重定向、重甲剑傀、望舒/羲和/射日弓与双阶段玄霄
     ├── combat/                   # 云天河全状态机（轻重斩/跳劈/翻滚/防反/弹反/双战技/御剑贯心处决）
     ├── vfx/                      # 动态弧形丝带刀光着色器、方向火花、跳跃冲击环与三层掉落光柱
     ├── audio/                    # 《回梦游仙》32 小节原谱序列与 WebAudio 竹笛/古筝/琵琶/战鼓合成器
@@ -135,4 +140,4 @@ Dream-Wanderer/
 ## 📜 致敬与声明
 
 * 世界观角色与《回梦游仙》旋律致敬上海软星经典单机作品 **《仙剑奇侠传四》**；核心战斗交互致敬 FromSoftware **《艾尔登法环》**。
-* 本项目为纯代码实时渲染技术学习与非商业同人致敬作品。
+* 3D 环境材质与自然资产源自 CC0 / MIT 开源社区（PolyHaven、VRoid CC0 Samples 等），仅用于实时渲染技术学习与非商业同人致敬展示。

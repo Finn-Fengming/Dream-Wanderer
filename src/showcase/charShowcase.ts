@@ -122,9 +122,9 @@ export class CharacterShowcaseStage {
 
     const entry = this.rigs[idx];
     const isTall = entry.id === 'golem';
-    const dist = isTall ? 5.2 : 3.45;
-    const lookY = isTall ? 12.2 : 11.65;
-    camera.setCustomShot(new THREE.Vector3(0.55, lookY + 0.55, -63.0 + dist), new THREE.Vector3(-0.15, lookY, -63.0));
+    const dist = isTall ? 4.85 : 2.85;
+    const lookY = isTall ? 12.15 : 11.58;
+    camera.setCustomShot(new THREE.Vector3(0.42, lookY + 0.35, -63.0 + dist), new THREE.Vector3(-0.08, lookY, -63.0));
 
     showcaseBar.querySelectorAll('button[data-idx]').forEach((b) => {
       b.classList.toggle('current', (b as HTMLElement).dataset.idx === String(idx));

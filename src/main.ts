@@ -12,6 +12,7 @@ import {
   simulateRelease,
 } from './core/input';
 import { GameRenderer } from './core/renderer';
+import { gameAssets } from './assets/assetLoader';
 import { QionghuaWorld, SpiritVeinSite } from './world/qionghuaWorld';
 import { SoulsCamera } from './camera/soulsCamera';
 import { CharacterShowcaseStage } from './showcase/charShowcase';
@@ -65,20 +66,25 @@ async function bootstrap() {
   const autoStart = params.get('auto') === '1' || stageParam === 'boss';
   const godParam = params.get('god') === '1';
 
-  setBootProgress(25, '正在凝结冰火琼华山门与云海灵脉…');
+  setBootProgress(4, '正在开启昆仑琼华仙境…');
   initInput(container);
 
   const quality = detectInitialQuality();
   const scene = new THREE.Scene();
   const soulsCam = new SoulsCamera();
   const gameRenderer = new GameRenderer(container, scene, soulsCam.camera, quality);
+
+  // Stream & pre-warm HDRI, PBR maps, 3D Kunlun cliffs/pines/statues, Mixamo mocap & VRM cast!
+  await gameAssets.loadAll(gameRenderer.renderer, (pct, text) => {
+    setBootProgress(pct, text);
+  });
+
   const world = new QionghuaWorld(scene, quality);
   const vfx = new CombatVfxManager(scene, world.textures.softGlowTex, world.textures.runeRingTex);
 
   // Mute automatically during automated showcase/headless modes so background tests stay silent
   const audio = new HuimengAudioEngine(Boolean(showMode));
 
-  setBootProgress(60, '正在锻造望舒羲和双剑与人物骨骼…');
   const player = new PlayerController(scene);
   player.godMode = godParam;
 

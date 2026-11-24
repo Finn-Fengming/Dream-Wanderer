@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { SMAAPass } from 'three/examples/jsm/postprocessing/SMAAPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { QualityConfig } from './quality';
@@ -10,10 +11,10 @@ const QionghuaGradeShader = {
   uniforms: {
     tDiffuse: { value: null },
     uTime: { value: 0 },
-    uDemonFactor: { value: 0 }, // 0 = Moonlit Jade & Amber, 1 = Crimson Eclipse & Hellfire
+    uDemonFactor: { value: 0 }, // 0 = Luminous Kunlun Jade & Golden-Rose Dawn/Dusk, 1 = Crimson Solar Eclipse
     uHurtFlash: { value: 0 },
     uFrostEdge: { value: 0 },
-    uVignette: { value: 0.34 },
+    uVignette: { value: 0.24 },
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -41,27 +42,33 @@ const QionghuaGradeShader = {
       vec4 tex = texture2D(tDiffuse, vUv);
       vec3 col = tex.rgb;
 
-      // Subtle split-toning: Jade-cyan shadows & warm amber/crimson highlights
+      // Anime-Realistic Vibrance Boost (lifts muted mid-saturation colors while protecting skin & highlights)
       float luma = dot(col, vec3(0.2126, 0.7152, 0.0722));
-      vec3 coldShadow = mix(vec3(0.92, 0.98, 1.06), vec3(1.06, 0.90, 0.92), uDemonFactor);
-      vec3 warmHigh   = mix(vec3(1.03, 1.00, 0.95), vec3(1.09, 0.96, 0.88), uDemonFactor);
-      col *= mix(coldShadow, warmHigh, smoothstep(0.12, 0.78, luma));
+      float maxC = max(col.r, max(col.g, col.b));
+      float minC = min(col.r, min(col.g, col.b));
+      float sat = maxC - minC;
+      col = mix(vec3(luma), col, 1.0 + (1.0 - sat) * 0.18);
 
-      // Gentle S-curve contrast
-      col = mix(col, smoothstep(0.0, 1.0, col), 0.10);
+      // Split-toning: Luminous cerulean-jade shadows & warm golden-peach sky/sun highlights
+      vec3 coldShadow = mix(vec3(0.94, 0.99, 1.06), vec3(1.08, 0.89, 0.91), uDemonFactor);
+      vec3 warmHigh   = mix(vec3(1.04, 1.01, 0.96), vec3(1.12, 0.95, 0.86), uDemonFactor);
+      col *= mix(coldShadow, warmHigh, smoothstep(0.14, 0.82, luma));
 
-      // Radial distance for vignette & combat screen-edge feedback
+      // Crisp anime cinema S-curve contrast without crushing shadow detail
+      col = mix(col, smoothstep(0.0, 1.0, col), 0.08);
+
+      // Gentle framing vignette
       vec2 centered = vUv - 0.5;
-      float distSq = dot(centered, centered) * 2.2;
+      float distSq = dot(centered, centered) * 2.1;
       col *= 1.0 - distSq * uVignette;
 
-      // Hurt crimson pulse & Wangshu frost aura on edges
+      // Hurt crimson pulse & Wangshu frost aura on screen edges
       float edgeMask = smoothstep(0.22, 0.85, distSq);
-      col = mix(col, vec3(0.75, 0.08, 0.06), edgeMask * uHurtFlash * 0.65);
-      col = mix(col, vec3(0.42, 0.82, 1.0), edgeMask * uFrostEdge * 0.35);
+      col = mix(col, vec3(0.82, 0.08, 0.06), edgeMask * uHurtFlash * 0.65);
+      col = mix(col, vec3(0.45, 0.85, 1.0), edgeMask * uFrostEdge * 0.35);
 
-      // Micro film grain to eliminate sky/fog banding
-      float grain = (hash12(vUv * 1024.0 + fract(uTime * 7.13)) - 0.5) * 0.012;
+      // Subtle dithering grain to eliminate sky/cloud-sea gradient banding
+      float grain = (hash12(vUv * 1024.0 + fract(uTime * 7.13)) - 0.5) * 0.008;
       col = clamp(col + grain, 0.0, 1.0);
 
       gl_FragColor = vec4(col, tex.a);
@@ -74,6 +81,7 @@ export class GameRenderer {
   public composer: EffectComposer;
   public renderPass: RenderPass;
   public bloomPass: UnrealBloomPass;
+  public smaaPass: SMAAPass;
   public gradePass: ShaderPass;
   public quality: QualityConfig;
 
@@ -81,7 +89,7 @@ export class GameRenderer {
     this.quality = quality;
 
     this.renderer = new THREE.WebGLRenderer({
-      antialias: !quality.bloomEnabled,
+      antialias: true,
       powerPreference: 'high-performance',
       stencil: false,
     });
@@ -90,7 +98,7 @@ export class GameRenderer {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.08;
+    this.renderer.toneMappingExposure = 1.15;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
 
     container.appendChild(this.renderer.domElement);
@@ -108,12 +116,12 @@ export class GameRenderer {
     this.renderPass = new RenderPass(scene, camera);
     this.composer.addPass(this.renderPass);
 
-    // Controlled HDR Bloom: threshold > 1.0 prevents stone/skin blowout while letting blades & talismans glow
+    // Controlled HDR Bloom: threshold 1.08 keeps marble/snow/skin crisp while sword auras, lanterns & runes glow!
     this.bloomPass = new UnrealBloomPass(
       new THREE.Vector2(window.innerWidth, window.innerHeight),
-      quality.bloomStrength,
-      0.58,
-      1.05
+      quality.bloomStrength * 0.88,
+      0.52,
+      1.08
     );
     this.bloomPass.enabled = quality.bloomEnabled;
     this.composer.addPass(this.bloomPass);
@@ -123,6 +131,13 @@ export class GameRenderer {
 
     this.gradePass = new ShaderPass(QionghuaGradeShader);
     this.composer.addPass(this.gradePass);
+
+    this.smaaPass = new SMAAPass(
+      Math.max(1, Math.floor(window.innerWidth * quality.pixelRatio)),
+      Math.max(1, Math.floor(window.innerHeight * quality.pixelRatio))
+    );
+    this.smaaPass.enabled = quality.tier === 'high' || quality.tier === 'ultra';
+    this.composer.addPass(this.smaaPass);
 
     window.addEventListener('resize', () => this.onResize(camera));
   }
@@ -135,7 +150,8 @@ export class GameRenderer {
     this.composer.setPixelRatio(q.pixelRatio);
     this.composer.setSize(window.innerWidth, window.innerHeight);
     this.bloomPass.enabled = q.bloomEnabled;
-    this.bloomPass.strength = q.bloomStrength;
+    this.bloomPass.strength = q.bloomStrength * 0.88;
+    this.smaaPass.enabled = q.tier === 'high' || q.tier === 'ultra';
 
     if (sunLight && sunLight.shadow.mapSize.x !== q.shadowMapSize) {
       sunLight.shadow.mapSize.set(q.shadowMapSize, q.shadowMapSize);
@@ -155,7 +171,6 @@ export class GameRenderer {
 
   public render(scene: THREE.Scene, camera: THREE.PerspectiveCamera, elapsed: number) {
     this.gradePass.uniforms.uTime.value = elapsed;
-    // Decay transient hurt/frost screen flashes
     this.gradePass.uniforms.uHurtFlash.value *= 0.9;
     this.gradePass.uniforms.uFrostEdge.value *= 0.94;
 
