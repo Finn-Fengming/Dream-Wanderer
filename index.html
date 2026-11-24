@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='12' fill='%230b1524'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-size='38' fill='%23ebd29b'>仙</text></svg>" />
+  <title>回梦游仙·青春版 | 仙剑四 × 艾尔登法环 3D 动作游戏</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+    html, body {
+      width: 100%; height: 100%; overflow: hidden;
+      background: #070b12;
+      color: #ebe3d2;
+      font-family: "STKaiti", "Kaiti SC", "Songti SC", "Noto Serif SC", "PingFang SC", "Microsoft YaHei", serif;
+    }
+    #game-canvas-wrap {
+      position: fixed; inset: 0; width: 100%; height: 100%;
+    }
+    canvas { display: block; width: 100%; height: 100%; }
+
+    /* Loading Overlay */
+    #boot-loader {
+      position: fixed; inset: 0; z-index: 200;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      background: radial-gradient(circle at 50% 42%, #132033 0%, #090e17 62%, #04060a 100%);
+      transition: opacity 0.7s ease;
+    }
+    #boot-loader.hidden { opacity: 0; pointer-events: none; }
+    .loader-emblem {
+      width: 78px; height: 78px; margin-bottom: 22px;
+      border: 1.5px solid rgba(208, 175, 112, 0.55);
+      transform: rotate(45deg);
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 0 32px rgba(102, 185, 235, 0.25), inset 0 0 18px rgba(232, 142, 78, 0.2);
+      animation: pulseEmblem 2.4s ease-in-out infinite;
+    }
+    .loader-emblem::after {
+      content: "仙";
+      transform: rotate(-45deg);
+      font-size: 30px; letter-spacing: 2px;
+      color: #e9d4a7;
+      text-shadow: 0 0 14px rgba(124, 206, 255, 0.65);
+    }
+    @keyframes pulseEmblem {
+      0%, 100% { box-shadow: 0 0 26px rgba(102, 185, 235, 0.22), inset 0 0 14px rgba(232, 142, 78, 0.18); }
+      50% { box-shadow: 0 0 44px rgba(122, 212, 255, 0.5), inset 0 0 26px rgba(255, 132, 72, 0.35); }
+    }
+    .loader-title {
+      font-size: 28px; letter-spacing: 9px; color: #f0dfc0;
+      margin-bottom: 10px; text-indent: 9px;
+      text-shadow: 0 2px 18px rgba(0, 0, 0, 0.85);
+    }
+    .loader-step {
+      font-size: 13px; letter-spacing: 3px; color: rgba(196, 214, 232, 0.78);
+      margin-bottom: 16px; min-height: 20px;
+    }
+    .loader-bar-track {
+      width: 260px; height: 3px; background: rgba(255, 255, 255, 0.12);
+      position: relative; overflow: hidden;
+    }
+    .loader-bar-fill {
+      height: 100%; width: 12%;
+      background: linear-gradient(90deg, #5ec4ff, #e7c27d, #ff6b4a);
+      transition: width 0.25s ease;
+    }
+
+    /* Showcase Banner (only shown in ?show=... mode) */
+    #showcase-bar {
+      position: fixed; top: 14px; left: 50%; transform: translateX(-50%);
+      z-index: 90; display: none; gap: 8px; align-items: center;
+      background: rgba(8, 13, 22, 0.78);
+      border: 1px solid rgba(212, 180, 118, 0.42);
+      padding: 7px 16px; backdrop-filter: blur(8px);
+      font-size: 13px; letter-spacing: 1.5px; color: #ebd9b7;
+    }
+    #showcase-bar.active { display: flex; }
+    #showcase-bar button {
+      background: rgba(255, 255, 255, 0.07);
+      color: #e9dcc2; border: 1px solid rgba(212, 180, 118, 0.35);
+      padding: 4px 10px; cursor: pointer; font-family: inherit; font-size: 12px;
+      transition: all 0.18s;
+    }
+    #showcase-bar button:hover, #showcase-bar button.current {
+      background: rgba(212, 180, 118, 0.26); color: #fff6e3; border-color: #e6c483;
+    }
+  </style>
+</head>
+<body>
+  <div id="game-canvas-wrap"></div>
+
+  <div id="boot-loader">
+    <div class="loader-emblem"></div>
+    <div class="loader-title">回梦游仙·青春版</div>
+    <div class="loader-step" id="loader-step">正在凝结琼华寒晶与云海灵脉…</div>
+    <div class="loader-bar-track">
+      <div class="loader-bar-fill" id="loader-bar"></div>
+    </div>
+  </div>
+
+  <div id="showcase-bar"></div>
+  <div id="ui-root"></div>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

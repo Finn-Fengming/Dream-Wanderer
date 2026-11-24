@@ -1,0 +1,22 @@
+{
+  "name": "dream-wanderer-youth-edition",
+  "private": true,
+  "version": "1.0.0",
+  "description": "《回梦游仙·青春版》— 仙剑奇侠传四 × 艾尔登法环 网页 3D 动作游戏",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 5173",
+    "build": "tsc --noEmit && vite build",
+    "build:single": "node scripts/build-single-html.mjs",
+    "preview": "vite preview --host 127.0.0.1 --port 4173"
+  },
+  "dependencies": {
+    "three": "^0.174.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/three": "^0.174.0",
+    "typescript": "^5.7.3",
+    "vite": "^6.2.0"
+  }
+}
