@@ -75,9 +75,13 @@ async function bootstrap() {
   const gameRenderer = new GameRenderer(container, scene, soulsCam.camera, quality);
 
   // Stream & pre-warm HDRI, PBR maps, 3D Kunlun cliffs/pines/statues, Mixamo mocap & VRM cast!
-  await gameAssets.loadAll(gameRenderer.renderer, (pct, text) => {
-    setBootProgress(pct, text);
-  });
+  await gameAssets.loadAll(
+    gameRenderer.renderer,
+    (pct, text) => {
+      setBootProgress(pct, text);
+    },
+    showMode
+  );
 
   const world = new QionghuaWorld(scene, quality);
   const vfx = new CombatVfxManager(scene, world.textures.softGlowTex, world.textures.runeRingTex);
@@ -321,8 +325,9 @@ async function bootstrap() {
   let fpsSmooth = 60;
 
   const updateF3 = createF3DebugOverlay(() => {
+    const rInfo = gameRenderer.renderer.info.render;
     return [
-      `fps    : ${fpsSmooth.toFixed(1)} | tier: ${gameRenderer.quality.tier}`,
+      `fps    : ${fpsSmooth.toFixed(1)} | tier: ${gameRenderer.quality.tier} | calls: ${rInfo.calls} | tris: ${rInfo.triangles}`,
       `player : (${player.pos.x.toFixed(2)}, ${player.pos.y.toFixed(2)}, ${player.pos.z.toFixed(2)}) state=${player.state} hp=${player.hp}/${player.maxHp}`,
       `boss   : state=${boss.state} phase=${boss.phase} hp=${boss.hp}/${boss.maxHp} poise=${boss.poise.toFixed(0)}`,
       `lock   : ${lockedTarget ? lockedTarget.name : 'none'} | shortcut: ${world.shortcutUnlocked}`,
@@ -508,14 +513,28 @@ async function bootstrap() {
       return;
     }
 
+    // Distance-cull SkinnedMesh characters (`frustumCulled = false`) beyond 58m or across sealed Fog Gate!
+    const cullCharactersByDistance = (camPos: THREE.Vector3, bossSealed: boolean) => {
+      for (const e of enemies) {
+        if (e.alive && e.aiState !== 'dead') {
+          e.rig.root.visible = !bossSealed && camPos.distanceToSquared(e.pos) < 58 * 58;
+        }
+      }
+      if (boss.state === 'dormant' && boss.alive) {
+        boss.rig.root.visible = camPos.z < -8;
+      }
+    };
+
     // Title Screen gentle orbital panorama
     if (ui.inTitleScreen) {
       const swayX = Math.sin(elapsed * 0.25) * 4.2;
       soulsCam.setCustomShot(new THREE.Vector3(swayX, 4.4, 81.0), new THREE.Vector3(0, 6.2, 42.0));
       world.update(clampedDt, elapsed, player.pos);
       soulsCam.update(clampedDt, player.pos, world);
+      cullCharactersByDistance(soulsCam.camera.position, false);
       audio.update(clampedDt);
       if (renderFrame) gameRenderer.render(scene, soulsCam.camera, elapsed);
+      updateF3();
       endInputFrame();
       return;
     }
@@ -731,6 +750,7 @@ async function bootstrap() {
 
     world.update(clampedDt, elapsed, player.pos);
     soulsCam.update(clampedDt, player.pos, world);
+    cullCharactersByDistance(soulsCam.camera.position, inBossArena);
     ui.update(clampedDt, player, boss, eliteGolem, lockedTarget, soulsCam.camera, inBossArena);
     audio.update(clampedDt);
 
@@ -789,6 +809,8 @@ async function bootstrap() {
     state: () => ({
       elapsed: Number(elapsed.toFixed(2)),
       fps: Number(fpsSmooth.toFixed(1)),
+      drawCalls: gameRenderer.renderer.info.render.calls,
+      triangles: gameRenderer.renderer.info.render.triangles,
       inTitle: ui.inTitleScreen,
       inGrace: ui.inGraceMenu,
       pos: [Number(player.pos.x.toFixed(2)), Number(player.pos.y.toFixed(2)), Number(player.pos.z.toFixed(2))],

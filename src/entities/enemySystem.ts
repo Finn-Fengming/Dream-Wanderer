@@ -417,7 +417,17 @@ export class RegularEnemy implements DamageableTarget {
 
     this.rig.root.position.copy(this.pos);
     this.rig.root.rotation.y = this.yaw + Math.PI;
-    this.rig.updateAnimation(dt, planarSpeed, this.aiState !== 'idle');
+
+    // Distance Culling & AI/SpringBone Sleep for far-off idle enemies (> 36m away)!
+    const distFromPlayer = this.pos.distanceTo(player.pos);
+    if (this.aiState === 'idle' && distFromPlayer > 44) {
+      this.rig.root.visible = false;
+      return;
+    }
+    this.rig.root.visible = true;
+    if (this.aiState !== 'idle' || distFromPlayer <= 34) {
+      this.rig.updateAnimation(dt, planarSpeed, this.aiState !== 'idle');
+    }
 
     if (this.trail && this.rig.weapon) {
       const bPos = new THREE.Vector3();

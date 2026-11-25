@@ -1,8 +1,8 @@
 {
   "name": "dream-wanderer-youth-edition",
   "private": true,
-  "version": "2.0.0",
-  "description": "《回梦游仙·青春版》v2.0 — 仙剑奇侠传四 × 艾尔登法环 动漫写实级 3D 动作网页游戏",
+  "version": "3.0.0",
+  "description": "《回梦游仙·青春版》v3.0 — 仙剑奇侠传四 × 艾尔登法环 丝滑高帧率 & 多骨骼蒙皮古风仙侠 3D 动作网页游戏",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173",

@@ -228,9 +228,17 @@ export class XuanxiaoBoss implements DamageableTarget {
     onBossDefeated: () => void
   ) {
     if (this.state === 'dormant') {
-      this.rig.updateAnimation(dt, 0, true);
+      // Sleep & hide Boss completely while player is far down the mountain (> 40m away)!
+      const nearSummit = player.pos.z < -22;
+      this.rig.root.visible = nearSummit;
+      this.auraLight.visible = nearSummit;
+      if (nearSummit) {
+        this.rig.updateAnimation(dt, 0, true);
+      }
       return;
     }
+    this.rig.root.visible = true;
+    this.auraLight.visible = true;
 
     if (this.hitStopTimer > 0) {
       this.hitStopTimer -= dt;
