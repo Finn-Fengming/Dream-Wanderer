@@ -415,6 +415,12 @@ export class RegularEnemy implements DamageableTarget {
       }
     }
 
+    // Snap idle/standing height cleanly onto CollisionWorld walkable surface (prevents stair hover/sink!)
+    if (planarSpeed < 0.05 && this.aiState === 'idle') {
+      const snappedY = world.sampleWalkableHeight(this.pos.x, this.pos.z, this.pos.y + 1.8);
+      if (snappedY !== null) this.pos.y = snappedY;
+    }
+
     this.rig.root.position.copy(this.pos);
     this.rig.root.rotation.y = this.yaw + Math.PI;
 
@@ -426,7 +432,14 @@ export class RegularEnemy implements DamageableTarget {
     }
     this.rig.root.visible = true;
     if (this.aiState !== 'idle' || distFromPlayer <= 34) {
-      this.rig.updateAnimation(dt, planarSpeed, this.aiState !== 'idle');
+      this.rig.updateAnimation(
+        dt,
+        planarSpeed,
+        this.aiState !== 'idle',
+        0,
+        (x, z, refY) => world.sampleFootHeight(x, z, refY),
+        true
+      );
     }
 
     if (this.trail && this.rig.weapon) {

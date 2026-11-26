@@ -5,7 +5,14 @@ import { SoulsCamera } from '../camera/soulsCamera';
 
 export class CharacterShowcaseStage {
   public group = new THREE.Group();
-  private rigs: { id: ArchetypeId; label: string; rig: XianxiaCharacterRig; trail: SwordRibbonTrail | null; demoClips: ActionClipName[] }[] = [];
+  private rigs: {
+    id: ArchetypeId;
+    label: string;
+    rig: XianxiaCharacterRig;
+    partnerRig?: XianxiaCharacterRig;
+    trail: SwordRibbonTrail | null;
+    demoClips: ActionClipName[];
+  }[] = [];
   private currentIdx = 0;
   private clipCycleIdx = 0;
   private clipTimer = 0;
@@ -32,24 +39,24 @@ export class CharacterShowcaseStage {
     }[] = [
       {
         id: 'tianhe',
-        label: '云天河 (望舒剑+射日弓)',
-        coreCol: new THREE.Color(1.2, 2.0, 2.5),
-        edgeCol: new THREE.Color(0.2, 0.78, 1.45),
-        clips: ['none', 'light1', 'light2', 'light3', 'skill_rush', 'skill_bow'],
+        label: '云天河 (望舒剑+山文甲+射日弓)',
+        coreCol: new THREE.Color(0.95, 1.72, 2.15),
+        edgeCol: new THREE.Color(0.18, 0.68, 1.28),
+        clips: ['none', 'light1', 'light2', 'light3', 'dodge', 'skill_bow'],
       },
       {
         id: 'xuanxiao',
-        label: '玄霄·二阶段 (羲和剑+焚天剑翼)',
-        coreCol: new THREE.Color(2.4, 1.1, 0.3),
-        edgeCol: new THREE.Color(1.6, 0.25, 0.08),
+        label: '玄霄·二阶段 (绯红龙鳞锦+焚天剑翼)',
+        coreCol: new THREE.Color(2.05, 0.92, 0.24),
+        edgeCol: new THREE.Color(1.42, 0.24, 0.06),
         clips: ['none', 'xx_combo1', 'xx_delaySlam', 'xx_roar', 'xx_dance'],
         demon: true,
       },
       {
         id: 'golem',
-        label: '镇岳剑傀 (中庭精英)',
-        coreCol: new THREE.Color(0.8, 1.9, 2.3),
-        edgeCol: new THREE.Color(0.18, 0.65, 1.1),
+        label: '镇岳剑傀 (24MB全套鎏金重甲)',
+        coreCol: new THREE.Color(0.75, 1.65, 2.05),
+        edgeCol: new THREE.Color(0.18, 0.60, 1.05),
         clips: ['none', 'heavy', 'xx_delaySlam'],
       },
       {
@@ -76,23 +83,23 @@ export class CharacterShowcaseStage {
       rig.root.visible = false;
       this.group.add(rig.root);
 
-      // Pair companion on stage for dual-character previews!
+      let partnerRig: XianxiaCharacterRig | undefined;
       if (sp.id === 'cultivator') {
-        const partner = new XianxiaCharacterRig('disciple');
-        partner.root.position.set(-1.35, 0, -0.35);
-        partner.root.rotation.y = 0.28;
-        partner.updateAnimation(0.016, 0, true);
-        rig.root.add(partner.root);
+        partnerRig = new XianxiaCharacterRig('disciple');
+        partnerRig.root.position.set(-1.35, 0, -0.35);
+        partnerRig.root.rotation.y = 0.28;
+        partnerRig.updateAnimation(0.016, 0, true, 0, () => 10.52, true);
+        rig.root.add(partnerRig.root);
       } else if (sp.id === 'lingsha') {
-        const mengli = new XianxiaCharacterRig('mengli');
-        mengli.root.position.set(-1.25, 0, -0.35);
-        mengli.root.rotation.y = 0.25;
-        mengli.updateAnimation(0.016, 0, true);
-        rig.root.add(mengli.root);
+        partnerRig = new XianxiaCharacterRig('mengli');
+        partnerRig.root.position.set(-1.25, 0, -0.35);
+        partnerRig.root.rotation.y = 0.25;
+        partnerRig.updateAnimation(0.016, 0, true, 0, () => 10.52, true);
+        rig.root.add(partnerRig.root);
       }
 
       const trail = rig.weapon ? new SwordRibbonTrail(scene, sp.coreCol, sp.edgeCol, 22) : null;
-      this.rigs.push({ id: sp.id, label: sp.label, rig, trail, demoClips: sp.clips });
+      this.rigs.push({ id: sp.id, label: sp.label, rig, partnerRig, trail, demoClips: sp.clips });
     }
 
     showcaseBar.classList.add('active');
@@ -146,7 +153,8 @@ export class CharacterShowcaseStage {
     entry.rig.activeClip = clip;
     entry.rig.clipProgress = clip === 'none' ? 0 : this.clipTimer / dur;
     entry.rig.root.rotation.y = Math.sin(elapsed * 0.55) * 0.42;
-    entry.rig.updateAnimation(dt, 0, true);
+    entry.rig.updateAnimation(dt, 0, true, 0, () => 10.52, true);
+    entry.partnerRig?.updateAnimation(dt, 0, true, 0, () => 10.52, true);
 
     if (entry.trail && entry.rig.weapon && entry.rig.weapon.group.visible) {
       const bPos = new THREE.Vector3();

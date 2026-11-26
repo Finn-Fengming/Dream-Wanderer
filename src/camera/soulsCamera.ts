@@ -18,7 +18,7 @@ export class SoulsCamera {
   private handoffBlend = 1.0;
 
   constructor() {
-    this.camera = new THREE.PerspectiveCamera(54, window.innerWidth / Math.max(1, window.innerHeight), 0.15, 420);
+    this.camera = new THREE.PerspectiveCamera(54, window.innerWidth / Math.max(1, window.innerHeight), 0.15, 900);
     this.camera.position.copy(this.currentCamPos);
   }
 

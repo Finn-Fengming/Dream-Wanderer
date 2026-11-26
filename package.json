@@ -1,8 +1,8 @@
 {
   "name": "dream-wanderer-youth-edition",
   "private": true,
-  "version": "3.0.0",
-  "description": "《回梦游仙·青春版》v3.0 — 仙剑奇侠传四 × 艾尔登法环 丝滑高帧率 & 多骨骼蒙皮古风仙侠 3D 动作网页游戏",
+  "version": "4.0.0",
+  "description": "《回梦游仙·青春版》v4.0 — 仙剑奇侠传四 × 艾尔登法环 次世代 PBR 光影 · 连续昆仑仙境 · 双骨骼足部 IK · 2K 云锦山文甲与 46 式动捕 3D 动作游戏",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173",

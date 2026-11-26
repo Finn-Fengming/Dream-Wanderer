@@ -1,3 +1,4 @@
+import { gameAssets } from '../assets/assetLoader';
 import { HUIMENG_ACCOMP, HUIMENG_TOTAL_BEATS, HUIMENG_TREBLE } from './huimengScore';
 
 export type MusicMood = 'serene' | 'explore' | 'boss_p1' | 'boss_p2' | 'victory';
@@ -17,7 +18,8 @@ export type SfxId =
   | 'fog_gate'
   | 'flute_summon'
   | 'bow_release'
-  | 'meteor_boom';
+  | 'meteor_boom'
+  | 'death_stinger';
 
 function midiToFreq(midi: number): number {
   return 440 * Math.pow(2, (midi - 69) / 12);
@@ -30,6 +32,8 @@ export class HuimengAudioEngine {
   private sfxGain!: GainNode;
   private reverbNode!: ConvolverNode;
   private noiseBuffer!: AudioBuffer;
+  private decodedSfx = new Map<string, AudioBuffer>();
+  private decodingStarted = false;
 
   public muted = false;
   public mood: MusicMood = 'serene';
@@ -46,7 +50,9 @@ export class HuimengAudioEngine {
   public unlock() {
     if (this.muted) return;
     if (!this.ctx) {
-      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const AudioCtx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       if (!AudioCtx) return;
       this.ctx = new AudioCtx();
 
@@ -54,15 +60,13 @@ export class HuimengAudioEngine {
       this.masterGain.gain.value = 0.85;
       this.masterGain.connect(this.ctx.destination);
 
-      // Keep BGM around ~1/3 of combat SFX per audio design guide so parries & hits shine
       this.musicGain = this.ctx.createGain();
       this.musicGain.gain.value = 0.24;
 
       this.sfxGain = this.ctx.createGain();
-      this.sfxGain.gain.value = 0.78;
+      this.sfxGain.gain.value = 0.82;
       this.sfxGain.connect(this.masterGain);
 
-      // Build lush Qionghua canyon hall Impulse Response (2.2s stereo reverb)
       this.reverbNode = this.ctx.createConvolver();
       this.reverbNode.buffer = this.createHallImpulse(2.2);
 
@@ -73,13 +77,42 @@ export class HuimengAudioEngine {
       this.reverbNode.connect(wetGain);
       wetGain.connect(this.masterGain);
 
-      // Long 4-second filtered wind/noise buffer (avoids audible short-loop periodicity)
       this.noiseBuffer = this.createNoiseBuffer(4.0);
       this.startAmbientWind();
+      this.decodeLoadedSamples();
     }
     if (this.ctx.state === 'suspended') {
       this.ctx.resume().catch(() => {});
     }
+  }
+
+  private decodeLoadedSamples() {
+    if (!this.ctx || this.decodingStarted) return;
+    this.decodingStarted = true;
+    const ctx = this.ctx;
+    for (const [name, rawBuf] of gameAssets.sfxBuffers.entries()) {
+      ctx
+        .decodeAudioData(rawBuf.slice(0))
+        .then((audioBuf) => {
+          this.decodedSfx.set(name, audioBuf);
+        })
+        .catch(() => {});
+    }
+  }
+
+  private playSample(name: string, volume = 0.72, rate = 1.0): boolean {
+    if (!this.ctx || this.muted) return false;
+    const buf = this.decodedSfx.get(name);
+    if (!buf) return false;
+    const src = this.ctx.createBufferSource();
+    src.buffer = buf;
+    src.playbackRate.value = rate;
+    const g = this.ctx.createGain();
+    g.gain.value = volume;
+    src.connect(g);
+    g.connect(this.sfxGain);
+    src.start();
+    return true;
   }
 
   public setMuted(mute: boolean) {
@@ -90,6 +123,9 @@ export class HuimengAudioEngine {
   }
 
   public setMood(mood: MusicMood) {
+    if (this.mood !== mood && mood === 'victory') {
+      this.playSample('victory-stinger', 0.65, 1.0);
+    }
     this.mood = mood;
   }
 
@@ -138,7 +174,6 @@ export class HuimengAudioEngine {
     src.start();
   }
 
-  /** Synthesizes expressive Chinese Dizi (bamboo flute) or Pipa lead note */
   private playDiziOrPipaNote(freq: number, durSec: number, isCombatLead: boolean) {
     if (!this.ctx || this.muted) return;
     const now = this.ctx.currentTime;
@@ -148,7 +183,6 @@ export class HuimengAudioEngine {
     const gain = this.ctx.createGain();
 
     if (isCombatLead) {
-      // Crisp plucked Pipa / Guqin attack for Boss battle variation!
       osc.type = 'sawtooth';
       osc2.type = 'triangle';
       osc.frequency.setValueAtTime(freq, now);
@@ -173,7 +207,6 @@ export class HuimengAudioEngine {
       osc.stop(now + durSec + 0.05);
       osc2.stop(now + durSec + 0.05);
     } else {
-      // Ethereal Bamboo Dizi with gentle vibrato for Serene / Explore / Victory《回梦游仙》!
       osc.type = 'triangle';
       osc2.type = 'sine';
       osc.frequency.setValueAtTime(freq, now);
@@ -208,7 +241,6 @@ export class HuimengAudioEngine {
     }
   }
 
-  /** Synthesizes Plucked Guzheng accompaniment & Chinese War Drum (中国大鼓) */
   private playGuzhengPluck(freq: number, durSec: number) {
     if (!this.ctx || this.muted) return;
     const now = this.ctx.currentTime;
@@ -267,14 +299,13 @@ export class HuimengAudioEngine {
     }
 
     const isBoss = this.mood === 'boss_p1' || this.mood === 'boss_p2';
-    const pitchShift = this.mood === 'boss_p2' ? 2 : 0; // Dramatic whole-step modulation in Phase 2!
+    const pitchShift = this.mood === 'boss_p2' ? 2 : 0;
 
     while (
       this.trebleIdx < HUIMENG_TREBLE.length &&
       HUIMENG_TREBLE[this.trebleIdx][0] <= this.beatCursor
     ) {
       const [, durBeats, pitch] = HUIMENG_TREBLE[this.trebleIdx];
-      // During quiet mountain exploration, thin out high melody slightly for atmospheric tension
       if (this.mood !== 'explore' || this.trebleIdx % 2 === 0) {
         this.playDiziOrPipaNote(midiToFreq(pitch + pitchShift), durBeats / beatsPerSec, isBoss);
       }
@@ -290,7 +321,6 @@ export class HuimengAudioEngine {
       this.accompIdx++;
     }
 
-    // Add Chinese War Drums in Boss Phases!
     if (isBoss) {
       this.drumBeatAccum += beatDelta;
       const step = this.mood === 'boss_p2' ? 0.5 : 1.0;
@@ -324,7 +354,14 @@ export class HuimengAudioEngine {
       src.start(now, Math.random() * 2.0, dur + 0.02);
     };
 
-    const tone = (type: OscillatorType, f0: number, f1: number, dur: number, vol: number, delay = 0) => {
+    const tone = (
+      type: OscillatorType,
+      f0: number,
+      f1: number,
+      dur: number,
+      vol: number,
+      delay = 0
+    ) => {
       const osc = ctx.createOscillator();
       const g = ctx.createGain();
       osc.type = type;
@@ -339,14 +376,24 @@ export class HuimengAudioEngine {
     };
 
     switch (id) {
-      case 'swing_light':
-        noiseBurst(0.14, 1450, 2.2, 0.32);
-        tone('sine', 520, 190, 0.12, 0.12);
+      case 'swing_light': {
+        const idx = 1 + Math.floor(Math.random() * 6);
+        const played = this.playSample(`swing-0${idx}`, 0.65, 0.96 + Math.random() * 0.12);
+        if (!played) {
+          noiseBurst(0.14, 1450, 2.2, 0.32);
+          tone('sine', 520, 190, 0.12, 0.12);
+        }
         break;
-      case 'swing_heavy':
-        noiseBurst(0.24, 920, 1.8, 0.48);
-        tone('triangle', 340, 95, 0.22, 0.26);
+      }
+      case 'swing_heavy': {
+        const idx = 6 + Math.floor(Math.random() * 4);
+        const played = this.playSample(`swing-0${idx}`, 0.82, 0.84 + Math.random() * 0.10);
+        if (!played) {
+          noiseBurst(0.24, 920, 1.8, 0.48);
+        }
+        tone('triangle', 320, 92, 0.22, 0.22);
         break;
+      }
       case 'hit_light':
         noiseBurst(0.11, 2100, 1.6, 0.45);
         tone('sawtooth', 190, 58, 0.11, 0.38);
@@ -361,25 +408,23 @@ export class HuimengAudioEngine {
         noiseBurst(0.1, 2600, 3.5, 0.35);
         break;
       case 'guard_counter':
-        // Iconic Elden Ring Guard Counter crystalline chime!
         tone('sine', 1320, 1310, 0.38, 0.48);
         tone('triangle', 1980, 1960, 0.32, 0.35, 0.02);
         noiseBurst(0.15, 3200, 4.0, 0.35);
         break;
       case 'parry_clang':
-        // Loudest, crispest metallic multi-harmonic ring!
         tone('sine', 1560, 1540, 0.55, 0.62);
         tone('triangle', 2340, 2300, 0.45, 0.45);
         tone('square', 780, 420, 0.18, 0.35);
         noiseBurst(0.16, 3800, 3.8, 0.48);
         break;
       case 'poise_break':
-        // Deep Elden Ring Stance-Break Bass Drop + Bronze Gong!
         tone('sine', 135, 28, 0.68, 0.82);
         tone('sawtooth', 220, 55, 0.48, 0.45);
         tone('sine', 880, 860, 0.65, 0.32);
         break;
       case 'riposte_stab':
+        this.playSample('swing-09', 0.78, 0.88);
         noiseBurst(0.28, 2400, 1.8, 0.68);
         tone('sawtooth', 260, 45, 0.38, 0.65);
         tone('sine', 1240, 620, 0.32, 0.38, 0.06);
@@ -394,14 +439,22 @@ export class HuimengAudioEngine {
         });
         break;
       case 'fog_gate':
-        noiseBurst(0.65, 780, 2.5, 0.38);
-        tone('sine', 330, 495, 0.65, 0.25);
+        if (!this.playSample('fog-stinger', 0.75, 1.0)) {
+          noiseBurst(0.65, 780, 2.5, 0.38);
+          tone('sine', 330, 495, 0.65, 0.25);
+        }
+        break;
+      case 'death_stinger':
+        if (!this.playSample('death-stinger', 0.80, 1.0)) {
+          tone('sine', 110, 42, 1.2, 0.65);
+        }
         break;
       case 'flute_summon':
         tone('triangle', 659.25, 783.99, 0.42, 0.32);
         tone('triangle', 987.77, 880.0, 0.55, 0.30, 0.32);
         break;
       case 'bow_release':
+        this.playSample('swing-04', 0.55, 1.25);
         noiseBurst(0.22, 2800, 2.6, 0.52);
         tone('sawtooth', 680, 180, 0.28, 0.42);
         break;
@@ -413,7 +466,6 @@ export class HuimengAudioEngine {
     }
   }
 
-  /** Speaks dramatic Boss / Companion lines using Web Speech API (while ducking BGM!) */
   public speakLine(text: string, role: 'xuanxiao' | 'lingsha' | 'mengli') {
     if (this.muted || typeof window.speechSynthesis === 'undefined') return;
     try {

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { SoulsCamera } from '../camera/soulsCamera';
 import { getMoveAxes, keys, mouse, pressed, released } from '../core/input';
 import { QionghuaWorld } from '../world/qionghuaWorld';
+import { snowFootprints } from '../world/surfaceMaterials';
 import { ActionClipName, XianxiaCharacterRig } from '../entities/xianxiaRig';
 import { CombatVfxManager, SwordRibbonTrail } from '../vfx/combatVfx';
 import { HuimengAudioEngine } from '../audio/huimengAudio';
@@ -209,13 +210,13 @@ export class PlayerController {
 
     this.swordTrail = new SwordRibbonTrail(
       scene,
-      new THREE.Color(1.25, 2.05, 2.5),
-      new THREE.Color(0.2, 0.78, 1.45),
-      22
+      new THREE.Color(0.95, 1.72, 2.15),
+      new THREE.Color(0.18, 0.68, 1.28),
+      24
     );
 
-    // Subtle character rim/fill light so Yun Tianhe & nearby enemies always read clearly in twilight shadows
-    this.charLight = new THREE.PointLight(0x9fd8ff, 0.95, 9.5, 1.6);
+    // Subtle moonlight rim fill so Yun Tianhe reads crisply without washing out Contact AO or warm lanterns
+    this.charLight = new THREE.PointLight(0x88c2f0, 0.42, 7.5, 1.8);
     this.charLight.position.set(0, 2.3, 0);
     scene.add(this.charLight);
   }
@@ -284,6 +285,7 @@ export class PlayerController {
     this.bufferedAction = 'none';
 
     audio.playSfx('swing_light');
+    snowFootprints.stamp(this.pos, 0.36);
     vfx.spawnHitSparks(
       this.pos.clone().add(new THREE.Vector3(0, 0.35, 0)),
       this.dodgeDir.clone().negate(),
@@ -1011,10 +1013,20 @@ export class PlayerController {
       }
     }
 
-    // Sync Character Rig Transform & Skeletal Animation
+    // Sync Character Rig Transform, Smooth 46-Clip Animation & 2-Bone Stair Foot IK!
+    const nearLivingEnemy =
+      Boolean(lockedTarget?.alive) ||
+      targets.some((t) => t.alive && t.pos.distanceToSquared(this.pos) < 15 * 15);
     this.rig.root.position.copy(this.pos);
     this.rig.root.rotation.y = this.yaw + Math.PI;
-    this.rig.updateAnimation(dt, planarSpeed, true, strafeDir);
+    this.rig.updateAnimation(
+      dt,
+      planarSpeed,
+      nearLivingEnemy,
+      strafeDir,
+      (x, z, refY) => world.sampleFootHeight(x, z, refY),
+      this.grounded
+    );
 
     // Update Wangshu Sword Ribbon Trail
     if (this.rig.weapon && this.rig.weapon.group.visible) {

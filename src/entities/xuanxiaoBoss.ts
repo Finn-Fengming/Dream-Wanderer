@@ -66,8 +66,8 @@ export class XuanxiaoBoss implements DamageableTarget {
 
     this.trail = new SwordRibbonTrail(
       scene,
-      new THREE.Color(2.4, 1.15, 0.32),
-      new THREE.Color(1.65, 0.28, 0.08),
+      new THREE.Color(2.05, 0.92, 0.24),
+      new THREE.Color(1.42, 0.24, 0.06),
       26
     );
 
@@ -661,7 +661,14 @@ export class XuanxiaoBoss implements DamageableTarget {
 
     this.rig.root.position.copy(this.pos);
     this.rig.root.rotation.y = this.yaw + Math.PI;
-    this.rig.updateAnimation(dt, planarSpeed, true);
+    this.rig.updateAnimation(
+      dt,
+      planarSpeed,
+      true,
+      0,
+      (x, z, refY) => world.sampleFootHeight(x, z, refY),
+      this.pos.y <= 10.65
+    );
 
     if (this.rig.weapon) {
       const bPos = new THREE.Vector3();

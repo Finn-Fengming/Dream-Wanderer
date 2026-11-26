@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { gameAssets } from '../assets/assetLoader';
+import { scaleUvMeters } from '../world/surfaceMaterials';
 
 export interface WeaponRig {
   group: THREE.Group;
@@ -24,24 +25,22 @@ function getEngravedBladeMaps() {
   nCtx.fillStyle = 'rgb(128,128,255)';
   nCtx.fillRect(0, 0, 256, 1024);
 
-  // Central fuller bevel normal & glowing ancient seal-script sword runes!
-  nCtx.fillStyle = 'rgb(96,128,245)';
+  nCtx.fillStyle = 'rgb(94,128,245)';
   nCtx.fillRect(102, 40, 24, 920);
-  nCtx.fillStyle = 'rgb(160,128,245)';
+  nCtx.fillStyle = 'rgb(162,128,245)';
   nCtx.fillRect(130, 40, 24, 920);
 
   eCtx.strokeStyle = '#ffffff';
-  eCtx.lineWidth = 5;
+  eCtx.lineWidth = 4;
   eCtx.beginPath();
   eCtx.moveTo(128, 70);
   eCtx.lineTo(128, 920);
   eCtx.stroke();
 
-  // Intricate Daoist star-circuit nodes along the fuller
-  for (let y = 140; y < 880; y += 92) {
-    eCtx.strokeRect(110, y, 36, 46);
+  for (let y = 130; y < 880; y += 88) {
+    eCtx.strokeRect(112, y, 32, 42);
     eCtx.beginPath();
-    eCtx.arc(128, y + 23, 14, 0, Math.PI * 2);
+    eCtx.arc(128, y + 21, 12, 0, Math.PI * 2);
     eCtx.stroke();
   }
 
@@ -51,10 +50,6 @@ function getEngravedBladeMaps() {
   return cachedEngravedBladeMaps;
 }
 
-/**
- * Builds a sleek, multi-station diamond-beveled sword blade BufferGeometry with crisp central ridge
- * and tapered fuller — ZERO crude cones or cylinders!
- */
 function buildSculptedBladeGeometry(
   stations: { y: number; halfWidth: number; halfThick: number }[],
   tipY: number
@@ -63,8 +58,6 @@ function buildSculptedBladeGeometry(
   const uvs: number[] = [];
   const idx: number[] = [];
 
-  // 6-vertex hexagonal/diamond beveled cross section per station:
-  // 0: +Z edge, 1: +X+Z ridge, 2: +X-Z ridge, 3: -Z edge, 4: -X-Z ridge, 5: -X+Z ridge
   const stride = 6;
   const y0 = stations[0].y;
   const totalLen = Math.max(0.01, tipY - y0);
@@ -99,8 +92,7 @@ function buildSculptedBladeGeometry(
       const b = (r + 1) * stride + s;
       const c = (r + 1) * stride + sn;
       const d = r * stride + sn;
-      idx.push(a, b, d);
-      idx.push(b, c, d);
+      idx.push(a, b, d, b, c, d);
     }
   }
 
@@ -112,7 +104,9 @@ function buildSculptedBladeGeometry(
 
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  const uvAttr = new THREE.Float32BufferAttribute(uvs, 2);
+  geo.setAttribute('uv', uvAttr);
+  geo.setAttribute('uv1', uvAttr.clone());
   geo.setIndex(idx);
   geo.computeVertexNormals();
   return geo;
@@ -124,51 +118,66 @@ function buildCurvedCrossguardWing(
   mat: THREE.Material
 ): THREE.Mesh {
   const curve = new THREE.CatmullRomCurve3(pts);
-  const m = new THREE.Mesh(new THREE.TubeGeometry(curve, 14, radius, 8, false), mat);
+  const m = new THREE.Mesh(scaleUvMeters(new THREE.TubeGeometry(curve, 14, radius, 8, false), 2.0, 1.0), mat);
   m.scale.set(0.55, 1.0, 1.0);
   return m;
 }
 
 /**
- * 1. 【望舒剑】(Wangshu Sword) — Sculpted Kunlun Ice-Crystal Twin-Spine Hollow Immortal Jian
+ * 1. 【望舒剑】(Wangshu Sword) — Forged Kunlun Frost-Steel & Translucent Ice-Jade Twin-Spine Jian
  */
 export function createWangshuSword(): WeaponRig {
   const group = new THREE.Group();
   const glowMaterials: THREE.Material[] = [];
   const maps = getEngravedBladeMaps();
 
-  const crystalMat = new THREE.MeshPhysicalMaterial({
-    color: 0xaef0ff,
-    emissive: new THREE.Color(0.24, 1.05, 1.72),
+  const crystalBladeMat = new THREE.MeshPhysicalMaterial({
+    color: 0xb4eeff,
+    map: gameAssets.pbr.armorBlade.color,
+    normalMap: gameAssets.pbr.armorBlade.normal,
+    roughnessMap: gameAssets.pbr.armorBlade.roughness,
+    emissive: new THREE.Color(0.18, 0.85, 1.38),
     emissiveMap: maps.runeEmissive,
-    emissiveIntensity: 1.1,
-    normalMap: maps.metalNormal,
-    roughness: 0.08,
-    metalness: 0.25,
+    emissiveIntensity: 0.95,
+    roughness: 0.12,
+    metalness: 0.58,
     clearcoat: 1.0,
-    transparent: true,
-    opacity: 0.94,
+    clearcoatRoughness: 0.08,
   });
-  glowMaterials.push(crystalMat);
+  glowMaterials.push(crystalBladeMat);
 
   const coreBeamMat = new THREE.MeshBasicMaterial({
-    color: new THREE.Color(0.85, 1.88, 2.45),
+    color: new THREE.Color(0.65, 1.48, 1.95),
   });
   glowMaterials.push(coreBeamMat);
 
-  const silverJadeMat = new THREE.MeshStandardMaterial({
-    color: 0xeaf4fc,
-    roughness: 0.20,
-    metalness: 0.88,
+  const silverHiltMat = new THREE.MeshStandardMaterial({
+    color: 0xdcebf6,
+    map: gameAssets.pbr.armorBrass.color,
+    normalMap: gameAssets.pbr.armorBrass.normal,
+    roughnessMap: gameAssets.pbr.armorBrass.roughness,
+    roughness: 0.22,
+    metalness: 0.90,
   });
 
-  // Cord-wrapped Silver-Jade Hilt + Ring Pommel + Flowing Silk Tassel
-  const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.017, 0.020, 0.23, 14), silverJadeMat);
-  grip.scale.set(0.75, 1.0, 1.15);
+  const leatherGripMat = new THREE.MeshStandardMaterial({
+    color: 0x1b3a54,
+    map: gameAssets.pbr.armorLeather.color,
+    normalMap: gameAssets.pbr.armorLeather.normal,
+    roughnessMap: gameAssets.pbr.armorLeather.roughness,
+    roughness: 0.52,
+    metalness: 0.15,
+  });
+
+  const grip = new THREE.Mesh(
+    scaleUvMeters(new THREE.CylinderGeometry(0.017, 0.020, 0.23, 14), 2.0, 3.0),
+    leatherGripMat
+  );
+  grip.scale.set(0.76, 1.0, 1.15);
   grip.position.y = -0.115;
   group.add(grip);
 
-  const pommelRing = new THREE.Mesh(new THREE.TorusGeometry(0.028, 0.007, 8, 18), silverJadeMat);
+  const pommelRing = new THREE.Mesh(new THREE.TorusGeometry(0.028, 0.0075, 8, 18), silverHiltMat);
   pommelRing.rotation.y = Math.PI / 2;
   pommelRing.position.y = -0.25;
   group.add(pommelRing);
@@ -179,25 +188,24 @@ export function createWangshuSword(): WeaponRig {
     new THREE.Vector3(0, -0.46, 0.06),
   ]);
   const tassel = new THREE.Mesh(
-    new THREE.TubeGeometry(tasselCurve, 10, 0.009, 6, false),
-    new THREE.MeshStandardMaterial({ color: 0x3ec8f8, roughness: 0.55 })
+    new THREE.TubeGeometry(tasselCurve, 10, 0.0085, 6, false),
+    new THREE.MeshStandardMaterial({ color: 0x3ec8f8, roughness: 0.52 })
   );
   group.add(tassel);
 
-  // Sweeping Crescent-Cloud Jade Crossguard (`流云望舒寒玉剑格`)
   for (const side of [-1, 1]) {
-    const wing = buildCurvedCrossguardWing(
-      [
-        new THREE.Vector3(0, 0.01, 0),
-        new THREE.Vector3(0, 0.035, side * 0.075),
-        new THREE.Vector3(0, 0.11, side * 0.135),
-      ],
-      0.018,
-      silverJadeMat
+    group.add(
+      buildCurvedCrossguardWing(
+        [
+          new THREE.Vector3(0, 0.01, 0),
+          new THREE.Vector3(0, 0.038, side * 0.076),
+          new THREE.Vector3(0, 0.115, side * 0.138),
+        ],
+        0.018,
+        silverHiltMat
+      )
     );
-    group.add(wing);
 
-    // Sculpted Twin-Pronged Hollow Ice-Crystal Blade Spines!
     const spineGeo = buildSculptedBladeGeometry(
       [
         { y: 0.03, halfWidth: 0.022, halfThick: 0.009 },
@@ -207,12 +215,11 @@ export function createWangshuSword(): WeaponRig {
       ],
       1.18
     );
-    const spineMesh = new THREE.Mesh(spineGeo, crystalMat);
+    const spineMesh = new THREE.Mesh(spineGeo, crystalBladeMat);
     spineMesh.position.z = side * 0.024;
     group.add(spineMesh);
   }
 
-  // Unified Spear-Point Crystal Tip & Inner Frost-Qi Core Filament
   const centerTipGeo = buildSculptedBladeGeometry(
     [
       { y: 0.94, halfWidth: 0.036, halfThick: 0.010 },
@@ -220,9 +227,9 @@ export function createWangshuSword(): WeaponRig {
     ],
     1.24
   );
-  group.add(new THREE.Mesh(centerTipGeo, crystalMat));
+  group.add(new THREE.Mesh(centerTipGeo, crystalBladeMat));
 
-  const coreFilament = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.96, 0.012), coreBeamMat);
+  const coreFilament = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.94, 0.010), coreBeamMat);
   coreFilament.position.y = 0.50;
   group.add(coreFilament);
 
@@ -238,7 +245,7 @@ export function createWangshuSword(): WeaponRig {
 }
 
 /**
- * 2. 【羲和剑】(Xihe Sword) — Xuanxiao's Sculpted Solar-Dragon Crimson-Gold Greatsword
+ * 2. 【羲和剑】(Xihe Sword) — Xuanxiao's Forged Solar-Dragon Crimson-Steel Greatsword
  */
 export function createXiheSword(): WeaponRig {
   const group = new THREE.Group();
@@ -246,28 +253,36 @@ export function createXiheSword(): WeaponRig {
   const maps = getEngravedBladeMaps();
 
   const crimsonBladeMat = new THREE.MeshStandardMaterial({
-    color: 0xc82418,
-    emissive: new THREE.Color(1.65, 0.42, 0.08),
+    color: 0xc4281a,
+    map: gameAssets.pbr.armorBlade.color,
+    normalMap: gameAssets.pbr.armorBlade.normal,
+    roughnessMap: gameAssets.pbr.armorBlade.roughness,
+    emissive: new THREE.Color(1.38, 0.34, 0.06),
     emissiveMap: maps.runeEmissive,
-    emissiveIntensity: 1.25,
-    normalMap: maps.metalNormal,
-    roughness: 0.18,
-    metalness: 0.78,
+    emissiveIntensity: 1.05,
+    roughness: 0.22,
+    metalness: 0.84,
   });
   glowMaterials.push(crimsonBladeMat);
 
   const magmaCoreMat = new THREE.MeshBasicMaterial({
-    color: new THREE.Color(2.25, 0.92, 0.24),
+    color: new THREE.Color(1.75, 0.68, 0.16),
   });
   glowMaterials.push(magmaCoreMat);
 
   const imperialGoldMat = new THREE.MeshStandardMaterial({
-    color: 0xe8b450,
-    roughness: 0.20,
-    metalness: 0.90,
+    color: 0xebb652,
+    map: gameAssets.pbr.armorBrass.color,
+    normalMap: gameAssets.pbr.armorBrass.normal,
+    roughnessMap: gameAssets.pbr.armorBrass.roughness,
+    roughness: 0.22,
+    metalness: 0.92,
   });
 
-  const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.021, 0.025, 0.28, 14), imperialGoldMat);
+  const grip = new THREE.Mesh(
+    scaleUvMeters(new THREE.CylinderGeometry(0.021, 0.025, 0.28, 14), 2.0, 3.0),
+    imperialGoldMat
+  );
   grip.scale.set(0.75, 1.0, 1.2);
   grip.position.y = -0.14;
   group.add(grip);
@@ -277,7 +292,6 @@ export function createXiheSword(): WeaponRig {
   pommel.position.y = -0.30;
   group.add(pommel);
 
-  // Swept Sun-Bird Wing Crossguard (`金乌展翼吞口剑格`)
   for (const side of [-1, 1]) {
     group.add(
       buildCurvedCrossguardWing(
@@ -302,12 +316,11 @@ export function createXiheSword(): WeaponRig {
       )
     );
   }
-  const sunGem = new THREE.Mesh(new THREE.SphereGeometry(0.034, 14, 12), magmaCoreMat);
+  const sunGem = new THREE.Mesh(new THREE.SphereGeometry(0.032, 14, 12), magmaCoreMat);
   sunGem.scale.set(0.6, 1.1, 1.1);
   sunGem.position.y = 0.045;
   group.add(sunGem);
 
-  // Broad Sculpted Flame-Waisted Greatsword Blade
   const bladeGeo = buildSculptedBladeGeometry(
     [
       { y: 0.04, halfWidth: 0.068, halfThick: 0.016 },
@@ -318,10 +331,9 @@ export function createXiheSword(): WeaponRig {
     ],
     1.46
   );
-  const mainBlade = new THREE.Mesh(bladeGeo, crimsonBladeMat);
-  group.add(mainBlade);
+  group.add(new THREE.Mesh(bladeGeo, crimsonBladeMat));
 
-  const fuller = new THREE.Mesh(new THREE.BoxGeometry(0.026, 1.06, 0.018), magmaCoreMat);
+  const fuller = new THREE.Mesh(new THREE.BoxGeometry(0.024, 1.04, 0.015), magmaCoreMat);
   fuller.position.y = 0.60;
   group.add(fuller);
 
@@ -336,18 +348,15 @@ export function createXiheSword(): WeaponRig {
   return { group, basePoint, tipPoint, glowMaterials };
 }
 
-/**
- * Builds an ornate translucent Crimson-Gold Spirit Sword for Xuanxiao's 9 Levitating Demon Wings!
- */
 export function createSpiritWingSwordMesh(): THREE.Group {
   const g = new THREE.Group();
   const bladeMat = new THREE.MeshBasicMaterial({
-    color: new THREE.Color(2.15, 0.62, 0.18),
+    color: new THREE.Color(1.75, 0.52, 0.14),
   });
   const goldMat = new THREE.MeshStandardMaterial({
-    color: 0xf0c264,
-    emissive: new THREE.Color(0.65, 0.22, 0.05),
-    roughness: 0.22,
+    color: 0xefc062,
+    emissive: new THREE.Color(0.45, 0.16, 0.04),
+    roughness: 0.24,
     metalness: 0.88,
   });
 
@@ -380,19 +389,22 @@ export function createSpiritWingSwordMesh(): THREE.Group {
 }
 
 /**
- * 3. 【后羿射日弓】(Houyi Sun-Shooting Divine Bow)
+ * 3. 【后羿射日弓】(Houyi Sun-Shooting Divine Bow — Forged Gilded Bronze PBR)
  */
 export function createHouyiBow(): { group: THREE.Group; arrowMesh: THREE.Group } {
   const group = new THREE.Group();
 
   const goldBronzeMat = new THREE.MeshStandardMaterial({
-    color: 0xe5b458,
-    emissive: new THREE.Color(0.32, 0.16, 0.04),
-    roughness: 0.22,
-    metalness: 0.88,
+    color: 0xe6b456,
+    map: gameAssets.pbr.armorBrass.color,
+    normalMap: gameAssets.pbr.armorBrass.normal,
+    roughnessMap: gameAssets.pbr.armorBrass.roughness,
+    emissive: new THREE.Color(0.24, 0.12, 0.03),
+    roughness: 0.24,
+    metalness: 0.90,
   });
   const crimsonGemMat = new THREE.MeshBasicMaterial({
-    color: new THREE.Color(2.15, 0.72, 0.2),
+    color: new THREE.Color(1.80, 0.62, 0.16),
   });
 
   const pts = [
@@ -403,7 +415,7 @@ export function createHouyiBow(): { group: THREE.Group; arrowMesh: THREE.Group }
     new THREE.Vector3(0, 0.60, -0.17),
   ];
   const limbMesh = new THREE.Mesh(
-    new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 28, 0.024, 10, false),
+    scaleUvMeters(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 28, 0.024, 10, false), 4.0, 1.0),
     goldBronzeMat
   );
   group.add(limbMesh);
@@ -422,22 +434,22 @@ export function createHouyiBow(): { group: THREE.Group; arrowMesh: THREE.Group }
       );
     }
   }
-  const coreSun = new THREE.Mesh(new THREE.SphereGeometry(0.038, 12, 10), crimsonGemMat);
+  const coreSun = new THREE.Mesh(new THREE.SphereGeometry(0.036, 12, 10), crimsonGemMat);
   coreSun.position.set(0, 0, 0.13);
   group.add(coreSun);
 
   const stringMesh = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.0035, 0.0035, 1.24, 6),
-    new THREE.MeshBasicMaterial({ color: new THREE.Color(1.9, 1.48, 0.6) })
+    new THREE.CylinderGeometry(0.003, 0.003, 1.24, 6),
+    new THREE.MeshBasicMaterial({ color: new THREE.Color(1.65, 1.25, 0.45) })
   );
   stringMesh.position.set(0, 0, -0.17);
   group.add(stringMesh);
 
   const arrowMesh = new THREE.Group();
-  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.009, 1.08, 6), crimsonGemMat);
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 1.08, 6), crimsonGemMat);
   shaft.rotation.x = Math.PI / 2;
   arrowMesh.add(shaft);
-  const head = new THREE.Mesh(new THREE.ConeGeometry(0.034, 0.18, 4), crimsonGemMat);
+  const head = new THREE.Mesh(new THREE.ConeGeometry(0.032, 0.18, 4), crimsonGemMat);
   head.rotation.x = Math.PI / 2;
   head.position.z = 0.58;
   arrowMesh.add(head);
@@ -448,21 +460,35 @@ export function createHouyiBow(): { group: THREE.Group; arrowMesh: THREE.Group }
 }
 
 /**
- * 4. 【琼华制式青锋仙剑】(Qionghua Sect Sword — Real 3D `katana_base.glb`)
+ * 4. 【琼华精锻青锋剑】(Qionghua Sect Sword — Real Photogrammetry `antique_katana.glb` / `forged_sword.glb`)
  */
-export function createSectSword(): WeaponRig {
+export function createSectSword(useAntique = true): WeaponRig {
   const group = new THREE.Group();
   const glowMaterials: THREE.Material[] = [];
 
-  if (gameAssets.weaponModels?.katanaBase) {
-    const model = gameAssets.weaponModels.katanaBase.clone(true);
-    model.rotation.set(-Math.PI / 2, 0, 0);
-    model.position.set(0, 0.06, 0);
-    model.scale.setScalar(1.05);
+  if (useAntique && gameAssets.weaponModels?.antiqueKatana) {
+    // `antique_katana.glb` is natively Y-aligned (-0.307..+0.696)
+    const model = gameAssets.weaponModels.antiqueKatana.clone(true);
+    model.scale.setScalar(1.32);
+    model.position.set(0, 0.18, 0);
     model.traverse((obj) => {
       if ((obj as THREE.Mesh).isMesh) {
         const m = obj as THREE.Mesh;
-        m.castShadow = false;
+        m.castShadow = true;
+        glowMaterials.push(m.material as THREE.Material);
+      }
+    });
+    group.add(model);
+  } else if (gameAssets.weaponModels?.forgedSword) {
+    // `forged_sword.glb` is Z-aligned (-0.141..+0.966) -> rotate -90 deg X to point +Y
+    const model = gameAssets.weaponModels.forgedSword.clone(true);
+    model.rotation.set(-Math.PI / 2, 0, 0);
+    model.position.set(0, 0.06, 0);
+    model.scale.setScalar(1.12);
+    model.traverse((obj) => {
+      if ((obj as THREE.Mesh).isMesh) {
+        const m = obj as THREE.Mesh;
+        m.castShadow = true;
         glowMaterials.push(m.material as THREE.Material);
       }
     });
@@ -470,7 +496,7 @@ export function createSectSword(): WeaponRig {
   }
 
   const basePoint = new THREE.Object3D();
-  basePoint.position.set(0, 0.06, 0);
+  basePoint.position.set(0, 0.08, 0);
   group.add(basePoint);
 
   const tipPoint = new THREE.Object3D();
@@ -481,28 +507,36 @@ export function createSectSword(): WeaponRig {
 }
 
 /**
- * 5. 【镇岳玄铁巨剑】(Zhenyue Giant Sword Golem's Engraved Bronze-Iron Rune Broadsword)
+ * 5. 【镇岳玄铁巨剑】(Zhenyue Giant Sword Golem's Forged Steel-Plate Rune Broadsword)
  */
 export function createGolemGreatsword(): WeaponRig {
   const group = new THREE.Group();
   const maps = getEngravedBladeMaps();
 
   const darkIronMat = new THREE.MeshStandardMaterial({
-    color: 0x3b4e5e,
-    emissive: new THREE.Color(0.28, 1.25, 1.75),
+    color: 0x4c6276,
+    map: gameAssets.pbr.armorPlate.color,
+    normalMap: gameAssets.pbr.armorPlate.normal,
+    roughnessMap: gameAssets.pbr.armorPlate.roughness,
+    emissive: new THREE.Color(0.22, 1.05, 1.48),
     emissiveMap: maps.runeEmissive,
-    emissiveIntensity: 1.15,
-    normalMap: maps.metalNormal,
-    roughness: 0.28,
-    metalness: 0.86,
-  });
-  const antiqueGoldMat = new THREE.MeshStandardMaterial({
-    color: 0xcfa454,
-    roughness: 0.26,
+    emissiveIntensity: 0.95,
+    roughness: 0.30,
     metalness: 0.88,
   });
+  const antiqueGoldMat = new THREE.MeshStandardMaterial({
+    color: 0xd8aa58,
+    map: gameAssets.pbr.armorBrass.color,
+    normalMap: gameAssets.pbr.armorBrass.normal,
+    roughnessMap: gameAssets.pbr.armorBrass.roughness,
+    roughness: 0.26,
+    metalness: 0.90,
+  });
 
-  const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.038, 0.44, 12), antiqueGoldMat);
+  const grip = new THREE.Mesh(
+    scaleUvMeters(new THREE.CylinderGeometry(0.032, 0.038, 0.44, 12), 2.0, 3.0),
+    antiqueGoldMat
+  );
   grip.position.y = -0.22;
   group.add(grip);
 

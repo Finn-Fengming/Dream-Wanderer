@@ -33,11 +33,14 @@ const ARENA_SHOTS: Record<
   string,
   { label: string; pos: [number, number, number]; look: [number, number, number]; demon?: number }
 > = {
-  vista: { label: '山门远眺', pos: [0, 3.8, 80.5], look: [0, 6.2, 40.0], demon: 0 },
-  terrace: { label: '断檐高台与中庭', pos: [15.5, 9.2, 41.5], look: [0, 5.2, 12.0], demon: 0 },
-  foggate: { label: '灵脉与金色雾门', pos: [-4.2, 13.2, -26.5], look: [0, 13.5, -45.0], demon: 0 },
-  summit_p1: { label: '卷云台·一阶段苍岚', pos: [0, 15.8, -42.5], look: [0, 13.0, -68.0], demon: 0 },
-  summit_p2: { label: '卷云台·二阶段焚天赤月', pos: [8.5, 16.5, -43.5], look: [0, 14.5, -68.0], demon: 1 },
+  vista: { label: '断云古道·山门远眺', pos: [0, 3.6, 80.5], look: [0, 5.8, 42.0], demon: 0 },
+  swordgrave: { label: '剑冢寒林·微距质感', pos: [-3.4, 2.2, 74.5], look: [-7.2, 1.1, 66.5], demon: 0 },
+  danbi: { label: '承天雕龙丹陛·香炉', pos: [4.6, 3.2, 54.5], look: [0, 2.4, 42.0], demon: 0 },
+  cloister: { label: '太极演武坛·抄手游廊', pos: [-11.5, 8.2, 24.5], look: [8.0, 5.5, 11.0], demon: 0 },
+  terrace: { label: '观云丹房偏院', pos: [15.8, 9.0, 41.5], look: [11.5, 5.6, 30.8], demon: 0 },
+  foggate: { label: '铁索剑桥·金色雾门', pos: [-4.8, 13.0, -24.5], look: [0, 13.2, -44.0], demon: 0 },
+  summit_p1: { label: '卷云台·太一仙宫', pos: [0, 15.6, -42.5], look: [0, 14.5, -78.0], demon: 0 },
+  summit_p2: { label: '卷云台·二阶段焚天赤蚀', pos: [8.5, 16.2, -43.5], look: [0, 15.0, -76.0], demon: 1 },
 };
 
 function setBootProgress(pct: number, text: string) {
@@ -84,6 +87,7 @@ async function bootstrap() {
   );
 
   const world = new QionghuaWorld(scene, quality);
+  gameRenderer.bindSunLight(world.sunLight);
   const vfx = new CombatVfxManager(scene, world.textures.softGlowTex, world.textures.runeRingTex);
 
   // Mute automatically during automated showcase/headless modes so background tests stay silent
@@ -113,7 +117,7 @@ async function bootstrap() {
   // World Loot Pillars:
   // Loot #1:【琼浆玉露】on Right Broken Eaves Terrace (+1 Crimson Flask!)
   const lootItems: LootPillar[] = [];
-  const terraceLootPos = new THREE.Vector3(12.6, 5.6, 31.5);
+  const terraceLootPos = new THREE.Vector3(12.8, 5.6, 30.8);
   const terraceLootMesh = createLootPillarMesh(terraceLootPos, true);
   scene.add(terraceLootMesh);
   lootItems.push({
@@ -284,7 +288,7 @@ async function bootstrap() {
     });
   };
 
-  if (showMode === 'arena') {
+  if (showMode === 'arena' || showMode === 'mats') {
     ui.hideTitle();
     document.querySelector('.hm-hud')?.classList.add('hidden');
     player.rig.root.visible = false;
@@ -292,7 +296,7 @@ async function bootstrap() {
     boss.rig.root.visible = false;
 
     showcaseBar.classList.add('active');
-    showcaseBar.innerHTML = `<span>【场景光影检验展台 ?show=arena】</span>`;
+    showcaseBar.innerHTML = `<span>【次世代场景与材质检验展台 ?show=${showMode}】</span>`;
     for (const [key, cfg] of Object.entries(ARENA_SHOTS)) {
       const btn = document.createElement('button');
       btn.dataset.shot = key;
@@ -300,7 +304,7 @@ async function bootstrap() {
       btn.onclick = () => applyArenaShot(key);
       showcaseBar.appendChild(btn);
     }
-    applyArenaShot(params.get('shot') || 'vista');
+    applyArenaShot(params.get('shot') || (showMode === 'mats' ? 'danbi' : 'vista'));
   } else if (showMode === 'chars') {
     ui.hideTitle();
     document.querySelector('.hm-hud')?.classList.add('hidden');
@@ -496,8 +500,8 @@ async function bootstrap() {
     const clampedDt = Math.min(dt, 0.05);
     elapsed += clampedDt;
 
-    if (showMode === 'arena') {
-      world.update(clampedDt, elapsed, soulsCam.camera.position);
+    if (showMode === 'arena' || showMode === 'mats') {
+      world.update(clampedDt, elapsed, soulsCam.camera.position, gameRenderer.quality.dynamicLights);
       soulsCam.update(clampedDt, soulsCam.camera.position, world);
       if (renderFrame) gameRenderer.render(scene, soulsCam.camera, elapsed);
       endInputFrame();
@@ -506,7 +510,7 @@ async function bootstrap() {
 
     if (showMode === 'chars') {
       charShowcase?.update(clampedDt, elapsed);
-      world.update(clampedDt, elapsed, new THREE.Vector3(0, 10.5, -63));
+      world.update(clampedDt, elapsed, new THREE.Vector3(0, 10.5, -63), gameRenderer.quality.dynamicLights);
       soulsCam.update(clampedDt, new THREE.Vector3(0, 10.5, -63), world);
       if (renderFrame) gameRenderer.render(scene, soulsCam.camera, elapsed);
       endInputFrame();
@@ -529,7 +533,7 @@ async function bootstrap() {
     if (ui.inTitleScreen) {
       const swayX = Math.sin(elapsed * 0.25) * 4.2;
       soulsCam.setCustomShot(new THREE.Vector3(swayX, 4.4, 81.0), new THREE.Vector3(0, 6.2, 42.0));
-      world.update(clampedDt, elapsed, player.pos);
+      world.update(clampedDt, elapsed, player.pos, gameRenderer.quality.dynamicLights);
       soulsCam.update(clampedDt, player.pos, world);
       cullCharactersByDistance(soulsCam.camera.position, false);
       audio.update(clampedDt);
@@ -726,6 +730,7 @@ async function bootstrap() {
         deathHandled = true;
         deathRespawnTimer = 2.6;
         setPointerLockAllowed(false);
+        audio.playSfx('death_stinger');
         ui.showBanner('梦 碎', '#d8382c', 2.5);
 
         if (player.lingyun > 0) {
@@ -748,7 +753,7 @@ async function bootstrap() {
 
     handleWorldInteractions(inBossArena);
 
-    world.update(clampedDt, elapsed, player.pos);
+    world.update(clampedDt, elapsed, player.pos, gameRenderer.quality.dynamicLights);
     soulsCam.update(clampedDt, player.pos, world);
     cullCharactersByDistance(soulsCam.camera.position, inBossArena);
     ui.update(clampedDt, player, boss, eliteGolem, lockedTarget, soulsCam.camera, inBossArena);
@@ -806,6 +811,7 @@ async function bootstrap() {
       return res;
     },
     unlockShortcut: () => world.unlockShortcut(),
+    scanMap: () => world.collision.scanSpineContinuity(),
     state: () => ({
       elapsed: Number(elapsed.toFixed(2)),
       fps: Number(fpsSmooth.toFixed(1)),

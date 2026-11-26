@@ -1,505 +1,432 @@
 import * as THREE from 'three';
 import { VRM, VRMHumanBoneName } from '@pixiv/three-vrm';
+import { gameAssets } from '../assets/assetLoader';
+import { deriveReliefPbrMaps, scaleUvMeters } from '../world/surfaceMaterials';
 
 export type GarmentThemeId = 'tianhe' | 'xuanxiao' | 'mengli' | 'disciple' | 'cultivator';
 
 interface GarmentPalette {
-  topUpper: string;
-  topMid: string;
-  topLower: string;
-  skirtUpper: string;
-  skirtLower: string;
-  hemBand: string;
+  brocadeKey: 'azure' | 'crimson' | 'lavender';
+  topTint: string;
+  midTint: string;
+  skirtUpperTint: string;
+  skirtLowerTint: string;
+  hemGold: string;
   trimGold: string;
   collarColor: string;
   sashColor: string;
   jadeColor: string;
   trouserColor: string;
   bootColor: string;
+  sheenColor: number;
+  armorTint: number;
   vestColor?: string;
   furColor?: string;
-  cloakUpper?: string;
-  cloakLower?: string;
-  shadeTint: THREE.Color;
-  rimTint: THREE.Color;
-  wideSleeveDrop: number; // 0.04 = fitted martial sleeve, 0.24 = flowing immortal wide sleeve
-  skirtEndRatio: number;  // 0.48 = knee martial tunic, 0.88 = ankle immortal robe
-  isRuqun?: boolean;      // High empire waist for Liu Mengli
+  hasHeavyPauldrons?: boolean;
+  hasTassetArmor?: boolean;
+  hasCloak?: boolean;
+  wideSleeveDrop: number;
+  skirtEndRatio: number;
+  isRuqun?: boolean;
 }
 
 const GARMENT_PALETTES: Record<GarmentThemeId, GarmentPalette> = {
   tianhe: {
-    topUpper: '#468cb8',
-    topMid: '#2b6792',
-    topLower: '#1b4566',
-    skirtUpper: '#2d6894',
-    skirtLower: '#153753',
-    hemBand: '#dcb66e',
-    trimGold: '#ebd08e',
-    collarColor: '#f3efe6',
-    sashColor: '#482d1b',
-    jadeColor: '#66e2d8',
-    trouserColor: '#1b2736',
-    bootColor: '#342218',
-    vestColor: '#6e4528',
-    furColor: '#f2eadb',
-    shadeTint: new THREE.Color(0.68, 0.76, 0.90),
-    rimTint: new THREE.Color(0.32, 0.72, 1.0),
+    brocadeKey: 'azure',
+    topTint: '#5ca4d4',
+    midTint: '#2e6e9e',
+    skirtUpperTint: '#295f8a',
+    skirtLowerTint: '#14334f',
+    hemGold: '#dfba70',
+    trimGold: '#f0d28c',
+    collarColor: '#f2ede4',
+    sashColor: '#3d2416',
+    jadeColor: '#62e8dc',
+    trouserColor: '#182433',
+    bootColor: '#2c1c14',
+    sheenColor: 0x7ec8ff,
+    armorTint: 0xd6b06a,
+    vestColor: '#694024',
+    furColor: '#efe6d5',
+    hasHeavyPauldrons: true,
+    hasTassetArmor: true,
     wideSleeveDrop: 0.04,
-    skirtEndRatio: 0.48,
+    skirtEndRatio: 0.50,
   },
   xuanxiao: {
-    topUpper: '#f5efe8',
-    topMid: '#be2428',
-    topLower: '#7d1216',
-    skirtUpper: '#ab1d21',
-    skirtLower: '#46090d',
-    hemBand: '#ecc062',
-    trimGold: '#f5cf78',
-    collarColor: '#f7f1e6',
-    sashColor: '#291013',
-    jadeColor: '#ff6a2b',
-    trouserColor: '#1b161d',
-    bootColor: '#24181b',
-    cloakUpper: '#a21a1e',
-    cloakLower: '#38070a',
-    shadeTint: new THREE.Color(0.74, 0.62, 0.66),
-    rimTint: new THREE.Color(0.95, 0.36, 0.16),
-    wideSleeveDrop: 0.24,
+    brocadeKey: 'crimson',
+    topTint: '#f4ece4',
+    midTint: '#c42428',
+    skirtUpperTint: '#a81b20',
+    skirtLowerTint: '#3e080c',
+    hemGold: '#f0c264',
+    trimGold: '#fae8a8',
+    collarColor: '#f6efe4',
+    sashColor: '#260d10',
+    jadeColor: '#ff6424',
+    trouserColor: '#19131a',
+    bootColor: '#211417',
+    sheenColor: 0xff8a5c,
+    armorTint: 0xebc068,
+    hasHeavyPauldrons: true,
+    hasTassetArmor: true,
+    hasCloak: true,
+    wideSleeveDrop: 0.23,
     skirtEndRatio: 0.86,
   },
   mengli: {
-    topUpper: '#f2f7fd',
-    topMid: '#d8caf6',
-    topLower: '#a188de',
-    skirtUpper: '#e2d7fb',
-    skirtLower: '#5e429c',
-    hemBand: '#9ee9ff',
-    trimGold: '#d2f4ff',
-    collarColor: '#f8f6ff',
-    sashColor: '#765cb8',
-    jadeColor: '#8cf0ff',
-    trouserColor: '#463272',
-    bootColor: '#523c84',
-    shadeTint: new THREE.Color(0.78, 0.72, 0.92),
-    rimTint: new THREE.Color(0.55, 0.82, 1.0),
-    wideSleeveDrop: 0.23,
+    brocadeKey: 'lavender',
+    topTint: '#f4f7ff',
+    midTint: '#d6c6f8',
+    skirtUpperTint: '#dfd2fc',
+    skirtLowerTint: '#52388f',
+    hemGold: '#9ce6ff',
+    trimGold: '#dcf6ff',
+    collarColor: '#f8f5ff',
+    sashColor: '#684ea8',
+    jadeColor: '#8cf2ff',
+    trouserColor: '#3e2c68',
+    bootColor: '#483478',
+    sheenColor: 0xc8b4ff,
+    armorTint: 0xcceeff,
+    wideSleeveDrop: 0.24,
     skirtEndRatio: 0.88,
     isRuqun: true,
   },
   disciple: {
-    topUpper: '#f2f8fd',
-    topMid: '#cde3f3',
-    topLower: '#84b5d4',
-    skirtUpper: '#d4e8f6',
-    skirtLower: '#2f6d94',
-    hemBand: '#82d8fa',
-    trimGold: '#c2e9fc',
-    collarColor: '#f7fbff',
-    sashColor: '#23577a',
-    jadeColor: '#7ee8ff',
-    trouserColor: '#1b2e40',
-    bootColor: '#1e2e3e',
-    shadeTint: new THREE.Color(0.68, 0.80, 0.92),
-    rimTint: new THREE.Color(0.35, 0.78, 1.0),
-    wideSleeveDrop: 0.06,
+    brocadeKey: 'azure',
+    topTint: '#eef6fc',
+    midTint: '#bcdaf0',
+    skirtUpperTint: '#78b0d6',
+    skirtLowerTint: '#255a80',
+    hemGold: '#8ad8f8',
+    trimGold: '#cbeeff',
+    collarColor: '#f5faff',
+    sashColor: '#1d4c6e',
+    jadeColor: '#78e8ff',
+    trouserColor: '#182a3b',
+    bootColor: '#1a2a3a',
+    sheenColor: 0x9cd8ff,
+    armorTint: 0xc2ddf0,
+    hasHeavyPauldrons: true,
+    hasTassetArmor: true,
+    wideSleeveDrop: 0.05,
     skirtEndRatio: 0.56,
   },
   cultivator: {
-    topUpper: '#eef6fc',
-    topMid: '#b5d6ed',
-    topLower: '#326b92',
-    skirtUpper: '#346f97',
-    skirtLower: '#163550',
-    hemBand: '#8ee0ff',
-    trimGold: '#dec47a',
-    collarColor: '#f6f9fd',
-    sashColor: '#1b4565',
-    jadeColor: '#7ceaff',
-    trouserColor: '#162636',
-    bootColor: '#1a2836',
-    cloakUpper: '#2c668e',
-    cloakLower: '#132e46',
-    shadeTint: new THREE.Color(0.66, 0.78, 0.92),
-    rimTint: new THREE.Color(0.40, 0.82, 1.0),
+    brocadeKey: 'azure',
+    topTint: '#ebf4fc',
+    midTint: '#9bc6e6',
+    skirtUpperTint: '#2e6890',
+    skirtLowerTint: '#132f48',
+    hemGold: '#d8be74',
+    trimGold: '#f0d894',
+    collarColor: '#f5f9fd',
+    sashColor: '#183e5c',
+    jadeColor: '#76e8ff',
+    trouserColor: '#142230',
+    bootColor: '#182534',
+    sheenColor: 0x88ccff,
+    armorTint: 0xdcc07a,
+    hasHeavyPauldrons: true,
+    hasCloak: true,
     wideSleeveDrop: 0.21,
-    skirtEndRatio: 0.78,
+    skirtEndRatio: 0.80,
   },
 };
 
-interface BakedGarmentTextures {
-  robeMat: THREE.MeshStandardMaterial;
+interface BakedGarmentMaterials {
+  robeMat: THREE.MeshPhysicalMaterial;
   innerBaseMat: THREE.MeshStandardMaterial;
-  collarMat: THREE.MeshStandardMaterial;
+  collarMat: THREE.MeshPhysicalMaterial;
   sashMat: THREE.MeshStandardMaterial;
-  trimMat: THREE.MeshStandardMaterial;
-  jadeMat: THREE.MeshStandardMaterial;
-  bootMat: THREE.MeshStandardMaterial;
-  vestMat?: THREE.MeshStandardMaterial;
-  furMat?: THREE.MeshStandardMaterial;
-  cloakMat?: THREE.MeshStandardMaterial;
+  shanwenArmorMat: THREE.MeshStandardMaterial;
+  trimBrassMat: THREE.MeshStandardMaterial;
+  jadeMat: THREE.MeshPhysicalMaterial;
+  bootLeatherMat: THREE.MeshStandardMaterial;
+  vestLeatherMat?: THREE.MeshStandardMaterial;
+  furMat?: THREE.MeshPhysicalMaterial;
+  cloakMat?: THREE.MeshPhysicalMaterial;
 }
 
-const cachedThemeMats = new Map<GarmentThemeId, BakedGarmentTextures>();
+const cachedThemeMats = new Map<GarmentThemeId, BakedGarmentMaterials>();
+let cachedShanwenMaps: ReturnType<typeof deriveReliefPbrMaps> | null = null;
 
-/**
- * Injects Genshin / Honkai-style Half-Lambert Cel-PBR Shading + Highlight Roll-off + Fresnel Rim
- * so custom Xianxia garments match the VRM Anime Face & Hair 100% seamlessly!
- */
-export function applyAnimeCelShader(
-  mat: THREE.MeshStandardMaterial,
-  shadeTint: THREE.Color,
-  rimTint: THREE.Color,
-  rimStrength = 0.26
-): THREE.MeshStandardMaterial {
-  mat.onBeforeCompile = (shader) => {
-    shader.uniforms.uCelShadeTint = { value: shadeTint };
-    shader.uniforms.uCelRimTint = { value: rimTint };
-    shader.uniforms.uCelRimStrength = { value: rimStrength };
-
-    shader.fragmentShader = shader.fragmentShader
-      .replace(
-        '#include <common>',
-        /* glsl */ `
-        #include <common>
-        uniform vec3 uCelShadeTint;
-        uniform vec3 uCelRimTint;
-        uniform float uCelRimStrength;
-        `
-      )
-      .replace(
-        '#include <opaque_fragment>',
-        /* glsl */ `
-        // Smooth anime cel-PBR compression: prevents white blowout while keeping warm rich shadows!
-        float celLum = dot(outgoingLight, vec3(0.299, 0.587, 0.114));
-        float celBand = smoothstep(0.15, 0.50, celLum);
-        vec3 shadedCol = diffuseColor.rgb * uCelShadeTint * 0.68;
-        vec3 litCol = min(outgoingLight, diffuseColor.rgb * 1.15 + vec3(0.12));
-        outgoingLight = mix(shadedCol, litCol, celBand);
-
-        // View-space Fresnel Rim Light (Genshin character edge pop!)
-        float fresnel = pow(1.0 - clamp(abs(dot(normalize(vNormal), normalize(vViewPosition))), 0.0, 1.0), 3.4);
-        outgoingLight += uCelRimTint * fresnel * uCelRimStrength;
-        #include <opaque_fragment>
-        `
-      );
-  };
-  mat.customProgramCacheKey = () =>
-    `anime_cel_${mat.vertexColors ? 'vc_' : ''}${shadeTint.getHexString()}_${rimTint.getHexString()}_${rimStrength.toFixed(2)}`;
-  return mat;
+function getShanwenReliefMaps() {
+  if (!cachedShanwenMaps) {
+    cachedShanwenMaps = deriveReliefPbrMaps(gameAssets.pbr.shanwenArmor, 3.2, 0.32, true);
+  }
+  return cachedShanwenMaps;
 }
 
 /**
- * Bakes high-resolution 1024x1024 Silk Damask, Ombre Gradient, Cloud Fretwork Embroidery,
- * Fold Ambient Occlusion, and Cloth Weave Normal Maps once per theme (shared across instances!).
+ * Builds Next-Gen Stylized-PBR Silk Brocade, Embossed Leather & Gilded Shanwen Scale-Armor Materials!
+ * Eliminates flat posterized cel washout so characters catch real Contact AO, silk sheen, and warm lantern light!
  */
-function getOrBakeThemeMaterials(theme: GarmentThemeId): BakedGarmentTextures {
+function getOrBakeThemeMaterials(theme: GarmentThemeId): BakedGarmentMaterials {
   const existing = cachedThemeMats.get(theme);
   if (existing) return existing;
 
   const P = GARMENT_PALETTES[theme];
+  const shanwenMaps = getShanwenReliefMaps();
+  const srcBrocade =
+    P.brocadeKey === 'crimson'
+      ? gameAssets.pbr.yunbrocadeCrimson
+      : P.brocadeKey === 'lavender'
+        ? gameAssets.pbr.yunbrocadeLavender
+        : gameAssets.pbr.yunbrocadeAzure;
+
   const size = 1024;
-
-  // 1. Main Silk/Brocade Robe Albedo + Roughness + Cloth-Pleat Normal Map
   const cCol = document.createElement('canvas');
-  const cNor = document.createElement('canvas');
-  const cRou = document.createElement('canvas');
-  cCol.width = cNor.width = cRou.width = size;
-  cCol.height = cNor.height = cRou.height = size;
-
+  cCol.width = cCol.height = size;
   const ctx = cCol.getContext('2d')!;
-  const nCtx = cNor.getContext('2d')!;
-  const rCtx = cRou.getContext('2d')!;
 
-  // Vertical ombre gradient: with flipY = false, vUv = 0.0 is y = 0 (collar) and vUv = 1.0 is y = size (hem)!
+  // 1. Base Vertical Tailored Ombre Gradient
   const grad = ctx.createLinearGradient(0, 0, 0, size);
-  grad.addColorStop(0.0, P.topUpper);
-  grad.addColorStop(0.34, P.topMid);
-  grad.addColorStop(0.54, P.skirtUpper);
-  grad.addColorStop(0.90, P.skirtLower);
-  grad.addColorStop(1.0, P.skirtLower);
+  grad.addColorStop(0.0, P.topTint);
+  grad.addColorStop(0.35, P.midTint);
+  grad.addColorStop(0.52, P.skirtUpperTint);
+  grad.addColorStop(0.92, P.skirtLowerTint);
+  grad.addColorStop(1.0, P.skirtLowerTint);
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, size, size);
 
-  rCtx.fillStyle = '#b6b6b6'; // Soft silk roughness (~0.71)
-  rCtx.fillRect(0, 0, size, size);
+  // 2. Composite Real 2K AI-Authored Woven Silk Cloud-Brocade Pattern (`织金暗纹云锦`) at 3x3 density!
+  const bImg = srcBrocade.image as CanvasImageSource | undefined;
+  if (bImg) {
+    ctx.save();
+    ctx.globalAlpha = 0.56;
+    ctx.globalCompositeOperation = 'overlay';
+    const tile = size / 3;
+    for (let ty = 0; ty < 3; ty++) {
+      for (let tx = 0; tx < 3; tx++) {
+        ctx.drawImage(bImg, tx * tile, ty * tile, tile, tile);
+      }
+    }
+    ctx.globalAlpha = 0.26;
+    ctx.globalCompositeOperation = 'source-over';
+    for (let ty = 0; ty < 3; ty++) {
+      for (let tx = 0; tx < 3; tx++) {
+        ctx.drawImage(bImg, tx * tile, ty * tile, tile, tile);
+      }
+    }
+    ctx.restore();
+  }
 
-  nCtx.fillStyle = 'rgb(128, 128, 255)';
-  nCtx.fillRect(0, 0, size, size);
-
-  // Subtle vertical drapery fold AO + normal waves (16 pleats around circumference)
+  // 3. Soft Tailored Drapery Pleat AO + Waist Belt Contact Crevice AO
   for (let x = 0; x < size; x += 4) {
     const u = (x / size) * Math.PI * 2 * 16;
-    const wave = Math.sin(u);
-    const slope = Math.cos(u);
-    const aoAlpha = Math.max(0, -wave) * 0.13;
-    ctx.fillStyle = `rgba(10, 14, 26, ${aoAlpha.toFixed(3)})`;
+    const aoAlpha = Math.max(0, -Math.sin(u)) * 0.16;
+    ctx.fillStyle = `rgba(6, 10, 20, ${aoAlpha.toFixed(3)})`;
     ctx.fillRect(x, 0, 4, size);
-
-    const nx = Math.round(128 + slope * 24);
-    nCtx.fillStyle = `rgb(${nx}, 128, 245)`;
-    nCtx.fillRect(x, 0, 4, size);
   }
-
-  // Tone-on-tone Chinese Cloud/Diamond Brocade Damask (`暗纹云锦`)
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.09)';
-  ctx.lineWidth = 2;
-  for (let gy = 48; gy < size - 120; gy += 64) {
-    for (let gx = 32; gx < size; gx += 64) {
-      const offX = ((gy / 64) % 2) * 32;
-      ctx.beginPath();
-      ctx.arc(gx + offX, gy, 16, 0, Math.PI * 1.35);
-      ctx.stroke();
-    }
-  }
-
-  // Under-belt soft Ambient Occlusion band around waist (vUv ~ 0.43..0.54)
-  const beltAo = ctx.createLinearGradient(0, size * 0.43, 0, size * 0.54);
+  const beltAo = ctx.createLinearGradient(0, size * 0.42, 0, size * 0.55);
   beltAo.addColorStop(0, 'rgba(0,0,0,0)');
-  beltAo.addColorStop(0.45, 'rgba(8,10,18,0.38)');
+  beltAo.addColorStop(0.48, 'rgba(4,6,14,0.48)');
   beltAo.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = beltAo;
-  ctx.fillRect(0, size * 0.43, size, size * 0.11);
+  ctx.fillRect(0, size * 0.42, size, size * 0.13);
 
-  // Ornate Metallic Gold / Jade Fretwork Embroidery Band at Bottom Hem & Wide Sleeve Cuffs (vUv: 0.90..0.98)
+  // 4. Intricate Woven Gold-Thread Hem Band (`织金云雷纹袍边`)
   const hemY = size * 0.90;
-  ctx.fillStyle = P.hemBand;
-  ctx.fillRect(0, hemY, size, 12);
-  ctx.fillRect(0, hemY + 56, size, 10);
-
-  // Chinese `回纹` geometric fretwork between the gold borders
-  ctx.strokeStyle = P.trimGold;
-  ctx.lineWidth = 4;
-  for (let x = 8; x < size; x += 48) {
-    ctx.strokeRect(x + 6, hemY + 18, 32, 30);
-    ctx.beginPath();
-    ctx.moveTo(x + 16, hemY + 33);
-    ctx.lineTo(x + 28, hemY + 33);
-    ctx.stroke();
+  ctx.fillStyle = P.hemGold;
+  ctx.fillRect(0, hemY, size, 8);
+  ctx.fillRect(0, hemY + 62, size, 10);
+  if (bImg) {
+    ctx.save();
+    ctx.globalAlpha = 0.85;
+    ctx.drawImage(bImg, 0, 0, size, 140, 0, hemY + 8, size, 54);
+    ctx.restore();
   }
-  rCtx.fillStyle = '#363636';
-  rCtx.fillRect(0, hemY, size, 68);
+  ctx.strokeStyle = P.trimGold;
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  for (let x = 0; x < size; x += 32) {
+    ctx.moveTo(x, hemY + 18);
+    ctx.lineTo(x + 22, hemY + 18);
+    ctx.lineTo(x + 22, hemY + 48);
+    ctx.lineTo(x + 8, hemY + 48);
+    ctx.lineTo(x + 8, hemY + 32);
+  }
+  ctx.stroke();
 
   const colTex = new THREE.CanvasTexture(cCol);
   colTex.flipY = false;
   colTex.colorSpace = THREE.SRGBColorSpace;
   colTex.wrapS = THREE.RepeatWrapping;
   colTex.wrapT = THREE.ClampToEdgeWrapping;
+  colTex.anisotropy = 4;
 
-  const norTex = new THREE.CanvasTexture(cNor);
-  norTex.flipY = false;
-  norTex.wrapS = THREE.RepeatWrapping;
-  norTex.wrapT = THREE.ClampToEdgeWrapping;
+  // Derive crisp tangent-space brocade weave & embroidery normal/roughness maps directly from our composite!
+  const brocadePbr = deriveReliefPbrMaps(colTex, 1.85, 0.56, true);
+  brocadePbr.normal.flipY = false;
+  brocadePbr.roughness.flipY = false;
 
-  const rouTex = new THREE.CanvasTexture(cRou);
-  rouTex.flipY = false;
-  rouTex.wrapS = THREE.RepeatWrapping;
-  rouTex.wrapT = THREE.ClampToEdgeWrapping;
+  // Fine cloth micro-normal for inner garments & lapels
+  const clothNor = gameAssets.pbr.armorCloth.normal.clone();
+  clothNor.needsUpdate = true;
+  clothNor.repeat.set(8, 8);
 
-  // 2. Crisp Ivory-and-Gold Cross-Collar Lapel Ribbon Texture (`交领织金领缘`)
+  // Woven Brocade Cross-Collar Lapel (`交领织金护领`)
   const cLapel = document.createElement('canvas');
   cLapel.width = 256;
   cLapel.height = 64;
   const lCtx = cLapel.getContext('2d')!;
   lCtx.fillStyle = P.collarColor;
   lCtx.fillRect(0, 0, 256, 64);
+  if (bImg) {
+    lCtx.globalAlpha = 0.35;
+    lCtx.drawImage(bImg, 0, 0, 256, 64);
+    lCtx.globalAlpha = 1.0;
+  }
   lCtx.fillStyle = P.trimGold;
-  lCtx.fillRect(0, 0, 44, 64);
-  lCtx.fillRect(218, 0, 38, 64);
-  lCtx.strokeStyle = P.hemBand;
-  lCtx.lineWidth = 3;
-  lCtx.strokeRect(52, 6, 158, 52);
+  lCtx.fillRect(0, 0, 38, 64);
+  lCtx.fillRect(220, 0, 36, 64);
   const lapelTex = new THREE.CanvasTexture(cLapel);
   lapelTex.flipY = false;
   lapelTex.colorSpace = THREE.SRGBColorSpace;
 
-  // 3. Sculpted Brocade Waist Belt Texture (`束腰玉带/革带`)
-  const cSash = document.createElement('canvas');
-  cSash.width = 256;
-  cSash.height = 128;
-  const sCtx = cSash.getContext('2d')!;
-  sCtx.fillStyle = P.sashColor;
-  sCtx.fillRect(0, 0, 256, 128);
-  sCtx.fillStyle = P.trimGold;
-  sCtx.fillRect(0, 0, 256, 18);
-  sCtx.fillRect(0, 110, 256, 18);
-  sCtx.strokeStyle = P.hemBand;
-  sCtx.lineWidth = 3;
-  for (let x = 12; x < 256; x += 32) {
-    sCtx.strokeRect(x, 34, 20, 60);
-  }
-  const sashTex = new THREE.CanvasTexture(cSash);
-  sashTex.flipY = false;
-  sashTex.wrapS = THREE.RepeatWrapping;
-  sashTex.colorSpace = THREE.SRGBColorSpace;
-
-  const robeMat = applyAnimeCelShader(
-    new THREE.MeshStandardMaterial({
-      map: colTex,
-      normalMap: norTex,
-      normalScale: new THREE.Vector2(0.42, 0.42),
-      roughnessMap: rouTex,
-      roughness: 0.72,
-      metalness: 0.08,
-      side: THREE.DoubleSide,
-    }),
-    P.shadeTint,
-    P.rimTint,
-    0.28
-  );
-
-  // Seamless Vertex-Colored Inner Anatomical Garment (1 draw call for inner tunic + armpits + trousers + foot boots!)
-  const innerBaseMat = applyAnimeCelShader(
-    new THREE.MeshStandardMaterial({
-      vertexColors: true,
-      normalMap: norTex,
-      normalScale: new THREE.Vector2(0.22, 0.22),
-      roughness: 0.74,
-      metalness: 0.06,
-    }),
-    P.shadeTint,
-    P.rimTint,
-    0.18
-  );
-
-  const collarMat = applyAnimeCelShader(
-    new THREE.MeshStandardMaterial({
-      map: lapelTex,
-      roughness: 0.52,
-      metalness: 0.22,
-      side: THREE.DoubleSide,
-    }),
-    P.shadeTint,
-    P.rimTint,
-    0.22
-  );
-
-  const sashMat = applyAnimeCelShader(
-    new THREE.MeshStandardMaterial({
-      map: sashTex,
-      roughness: 0.46,
-      metalness: 0.35,
-      side: THREE.DoubleSide,
-    }),
-    P.shadeTint,
-    P.rimTint,
-    0.22
-  );
-
-  const trimMat = applyAnimeCelShader(
-    new THREE.MeshStandardMaterial({
-      color: P.trimGold,
-      roughness: 0.26,
-      metalness: 0.80,
-      side: THREE.DoubleSide,
-    }),
-    P.shadeTint,
-    P.rimTint,
-    0.24
-  );
-
-  const jadeMat = new THREE.MeshStandardMaterial({
-    color: P.jadeColor,
-    emissive: new THREE.Color(P.jadeColor).multiplyScalar(0.32),
-    roughness: 0.18,
-    metalness: 0.25,
+  const robeMat = new THREE.MeshPhysicalMaterial({
+    map: colTex,
+    normalMap: brocadePbr.normal,
+    normalScale: new THREE.Vector2(0.75, 0.75),
+    roughnessMap: brocadePbr.roughness,
+    roughness: 0.56,
+    metalness: 0.14,
+    sheen: 0.62,
+    sheenRoughness: 0.36,
+    sheenColor: new THREE.Color(P.sheenColor),
+    side: THREE.DoubleSide,
   });
 
-  const bootMat = applyAnimeCelShader(
-    new THREE.MeshStandardMaterial({
-      color: P.bootColor,
-      normalMap: norTex,
-      normalScale: new THREE.Vector2(0.25, 0.25),
-      roughness: 0.50,
-      metalness: 0.18,
-      side: THREE.DoubleSide,
-    }),
-    P.shadeTint,
-    P.rimTint,
-    0.18
-  );
+  const innerBaseMat = new THREE.MeshStandardMaterial({
+    vertexColors: true,
+    normalMap: clothNor,
+    normalScale: new THREE.Vector2(0.55, 0.55),
+    roughness: 0.68,
+    metalness: 0.06,
+  });
 
-  const out: BakedGarmentTextures = {
+  const collarMat = new THREE.MeshPhysicalMaterial({
+    map: lapelTex,
+    normalMap: clothNor,
+    normalScale: new THREE.Vector2(0.45, 0.45),
+    roughness: 0.44,
+    metalness: 0.24,
+    sheen: 0.5,
+    sheenColor: new THREE.Color(0xffffff),
+    side: THREE.DoubleSide,
+  });
+
+  // Embossed Leather & Brass-Trimmed Waist Girdle (`精雕革带/束腰玉带`)
+  const sashMat = new THREE.MeshStandardMaterial({
+    color: P.sashColor,
+    map: gameAssets.pbr.armorLeather.color,
+    normalMap: gameAssets.pbr.armorLeather.normal,
+    normalScale: new THREE.Vector2(1.0, 1.0),
+    roughnessMap: gameAssets.pbr.armorLeather.roughness,
+    aoMap: gameAssets.pbr.armorLeather.ao,
+    roughness: 0.44,
+    metalness: 0.28,
+    side: THREE.DoubleSide,
+  });
+
+  // Authentic Chinese Shanwen Mountain-Scale Armor (`山文甲鎏金吞肩兽甲片`)!
+  const shanwenArmorMat = new THREE.MeshStandardMaterial({
+    color: P.armorTint,
+    emissive: new THREE.Color(P.armorTint).multiplyScalar(0.08),
+    map: shanwenMaps.color,
+    normalMap: shanwenMaps.normal,
+    normalScale: new THREE.Vector2(1.35, 1.35),
+    roughnessMap: shanwenMaps.roughness,
+    aoMap: shanwenMaps.ao,
+    roughness: 0.28,
+    metalness: 0.78,
+    side: THREE.DoubleSide,
+  });
+
+  const trimBrassMat = new THREE.MeshStandardMaterial({
+    color: P.trimGold,
+    map: gameAssets.pbr.armorBrass.color,
+    normalMap: gameAssets.pbr.armorBrass.normal,
+    roughnessMap: gameAssets.pbr.armorBrass.roughness,
+    roughness: 0.25,
+    metalness: 0.88,
+    side: THREE.DoubleSide,
+  });
+
+  const jadeMat = new THREE.MeshPhysicalMaterial({
+    color: P.jadeColor,
+    emissive: new THREE.Color(P.jadeColor).multiplyScalar(0.22),
+    roughness: 0.16,
+    metalness: 0.12,
+    clearcoat: 0.85,
+    clearcoatRoughness: 0.15,
+  });
+
+  const bootLeatherMat = new THREE.MeshStandardMaterial({
+    color: P.bootColor,
+    map: gameAssets.pbr.armorLeather.color,
+    normalMap: gameAssets.pbr.armorLeather.normal,
+    normalScale: new THREE.Vector2(0.9, 0.9),
+    roughnessMap: gameAssets.pbr.armorLeather.roughness,
+    roughness: 0.48,
+    metalness: 0.22,
+    side: THREE.DoubleSide,
+  });
+
+  const out: BakedGarmentMaterials = {
     robeMat,
     innerBaseMat,
     collarMat,
     sashMat,
-    trimMat,
+    shanwenArmorMat,
+    trimBrassMat,
     jadeMat,
-    bootMat,
+    bootLeatherMat,
   };
 
   if (P.vestColor) {
-    const cVest = document.createElement('canvas');
-    cVest.width = cVest.height = 256;
-    const vCtx = cVest.getContext('2d')!;
-    vCtx.fillStyle = P.vestColor;
-    vCtx.fillRect(0, 0, 256, 256);
-    // Gold-trimmed front & bottom borders on mountain-boar leather vest
-    vCtx.fillStyle = P.trimGold;
-    vCtx.fillRect(0, 0, 14, 256);
-    vCtx.fillRect(242, 0, 14, 256);
-    vCtx.fillRect(0, 238, 256, 18);
-    const vestTex = new THREE.CanvasTexture(cVest);
-    vestTex.flipY = false;
-    vestTex.colorSpace = THREE.SRGBColorSpace;
-
-    out.vestMat = applyAnimeCelShader(
-      new THREE.MeshStandardMaterial({
-        map: vestTex,
-        normalMap: norTex,
-        normalScale: new THREE.Vector2(0.32, 0.32),
-        roughness: 0.66,
-        metalness: 0.12,
-        side: THREE.DoubleSide,
-      }),
-      P.shadeTint,
-      P.rimTint,
-      0.22
-    );
+    out.vestLeatherMat = new THREE.MeshStandardMaterial({
+      color: P.vestColor,
+      map: gameAssets.pbr.armorLeather.color,
+      normalMap: gameAssets.pbr.armorLeather.normal,
+      normalScale: new THREE.Vector2(1.15, 1.15),
+      roughnessMap: gameAssets.pbr.armorLeather.roughness,
+      aoMap: gameAssets.pbr.armorLeather.ao,
+      roughness: 0.56,
+      metalness: 0.18,
+      side: THREE.DoubleSide,
+    });
   }
+
   if (P.furColor) {
-    out.furMat = applyAnimeCelShader(
-      new THREE.MeshStandardMaterial({
-        color: P.furColor,
-        roughness: 0.90,
-        metalness: 0.0,
-        side: THREE.DoubleSide,
-      }),
-      new THREE.Color(0.76, 0.78, 0.88),
-      P.rimTint,
-      0.30
-    );
+    out.furMat = new THREE.MeshPhysicalMaterial({
+      color: P.furColor,
+      normalMap: clothNor,
+      normalScale: new THREE.Vector2(1.2, 1.2),
+      roughness: 0.88,
+      metalness: 0.0,
+      sheen: 0.85,
+      sheenRoughness: 0.75,
+      sheenColor: new THREE.Color(0xffffff),
+      side: THREE.DoubleSide,
+    });
   }
-  if (P.cloakUpper && P.cloakLower) {
-    const cCloak = document.createElement('canvas');
-    cCloak.width = cCloak.height = 512;
-    const kCtx = cCloak.getContext('2d')!;
-    const kGrad = kCtx.createLinearGradient(0, 0, 0, 512);
-    kGrad.addColorStop(0, P.cloakUpper);
-    kGrad.addColorStop(0.86, P.cloakLower);
-    kGrad.addColorStop(1, P.hemBand);
-    kCtx.fillStyle = kGrad;
-    kCtx.fillRect(0, 0, 512, 512);
-    kCtx.strokeStyle = P.trimGold;
-    kCtx.lineWidth = 10;
-    kCtx.strokeRect(12, 12, 488, 488);
-    const kTex = new THREE.CanvasTexture(cCloak);
-    kTex.flipY = false;
-    kTex.colorSpace = THREE.SRGBColorSpace;
 
-    out.cloakMat = applyAnimeCelShader(
-      new THREE.MeshStandardMaterial({
-        map: kTex,
-        normalMap: norTex,
-        normalScale: new THREE.Vector2(0.35, 0.35),
-        roughness: 0.65,
-        side: THREE.DoubleSide,
-      }),
-      P.shadeTint,
-      P.rimTint,
-      0.28
-    );
+  if (P.hasCloak) {
+    out.cloakMat = new THREE.MeshPhysicalMaterial({
+      color: theme === 'xuanxiao' ? 0xd83232 : 0x4888b8,
+      map: srcBrocade,
+      normalMap: brocadePbr.normal,
+      normalScale: new THREE.Vector2(0.85, 0.85),
+      roughness: 0.50,
+      metalness: 0.18,
+      sheen: 0.68,
+      sheenRoughness: 0.35,
+      sheenColor: new THREE.Color(P.sheenColor),
+      side: THREE.DoubleSide,
+    });
   }
 
   cachedThemeMats.set(theme, out);
@@ -517,18 +444,13 @@ interface TubeStation {
   weights: [number, number, number, number];
 }
 
-/**
- * Generates a smooth, anatomically-contoured Skinned BufferGeometry along arbitrary 3D bone stations.
- * - `'verticalY'`: Horizontal XZ cross-sections for torso, sash, vest, and collar.
- * - `'limbTangent'`: Orthonormal Frenet frame perpendicular to true 3D bone segment tangents,
- *   preventing vertical shoulder fins on angled arms while supporting gravity sleeve drop (`dropY`)!
- */
 function buildContouredSkinnedTube(
   stations: TubeStation[],
   radialSegs = 20,
   thetaStart = 0,
   thetaLength = Math.PI * 2,
-  axisMode: 'verticalY' | 'limbTangent' = 'verticalY'
+  axisMode: 'verticalY' | 'limbTangent' = 'verticalY',
+  uRepeat = 1.0
 ): THREE.BufferGeometry {
   const positions: number[] = [];
   const uvs: number[] = [];
@@ -556,7 +478,6 @@ function buildContouredSkinnedTube(
       if (tangent.lengthSq() < 1e-6) tangent.set(1, 0, 0);
       tangent.normalize();
 
-      // Build perpendicular frame (frontAxis ~ +/-Z, upAxis ~ +Y)
       if (Math.abs(tangent.y) > 0.92) {
         frontAxis.set(0, 0, 1);
         upAxis.crossVectors(tangent, frontAxis).normalize();
@@ -582,11 +503,10 @@ function buildContouredSkinnedTube(
       let pz = st.center.z;
 
       if (axisMode === 'verticalY') {
-        const fold = 1.0 + pleat * Math.sin(theta * 12.0);
+        const fold = 1.0 + pleat * Math.sin(theta * 14.0);
         px += sinT * st.rx * fold;
         pz += cosT * st.rz * fold;
       } else {
-        // Perpendicular to bone tangent, with wide sleeves hanging cleanly in world -Y!
         const hang = sinT < 0 ? Math.pow(-sinT, 1.45) * drop : 0;
         const widen = 1.0 + (sinT < 0 && drop > 0.1 ? 0.28 : 0);
         const uOff = sinT * st.rx;
@@ -597,18 +517,16 @@ function buildContouredSkinnedTube(
       }
 
       positions.push(px, py, pz);
-      uvs.push(uFrac, st.vUv);
+      uvs.push(uFrac * uRepeat, st.vUv);
       skinIndices.push(st.bones[0], st.bones[1], st.bones[2], st.bones[3]);
       skinWeights.push(st.weights[0], st.weights[1], st.weights[2], st.weights[3]);
     }
   }
 
-  // Ensure outward-facing CCW vertex normals for both verticalY and limbTangent tubes!
   let flipWinding = false;
   if (axisMode === 'verticalY') {
     flipWinding = stations[stations.length - 1].center.y >= stations[0].center.y;
   } else {
-    // Check orientation of first quad (a, b, d) against radial offset from stations[0].center
     const aVec = new THREE.Vector3(positions[0], positions[1], positions[2]);
     const bVec = new THREE.Vector3(positions[stride * 3], positions[stride * 3 + 1], positions[stride * 3 + 2]);
     const dVec = new THREE.Vector3(positions[3], positions[4], positions[5]);
@@ -635,7 +553,9 @@ function buildContouredSkinnedTube(
 
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  const uvAttr = new THREE.Float32BufferAttribute(uvs, 2);
+  geo.setAttribute('uv', uvAttr);
+  geo.setAttribute('uv1', uvAttr.clone());
   geo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(skinIndices, 4));
   geo.setAttribute('skinWeight', new THREE.Float32BufferAttribute(skinWeights, 4));
   geo.setIndex(indices);
@@ -659,15 +579,81 @@ function buildContouredSkinnedTube(
 }
 
 /**
- * Tailors a complete, multi-bone GPU-skinned Ancient Xianxia Outfit directly onto a stripped VRM's
- * native `Body` Skeleton, culling hidden torso/leg/toe flesh triangles and replacing them with a
- * 1-draw-call seamless anatomical inner garment + multi-layered outer Hanfu robes & boots!
+ * Builds a Sculpted 3D Tiered Chinese `吞肩兽山文甲` Shoulder Pauldron attached to an upperArm bone!
+ */
+function buildSculptedCloudPauldron(
+  isRight: boolean,
+  armorMat: THREE.Material,
+  brassMat: THREE.Material,
+  jadeMat: THREE.Material,
+  ornateTiered = false
+): THREE.Group {
+  const g = new THREE.Group();
+  const sx = isRight ? -1 : 1; // In VRM0 rotated, leftUpperArm extends toward +X, rightUpperArm toward -X!
+
+  // Primary Curved Lamellar Scale Shell (`山文甲披膊主甲片`)
+  const shellGeo = scaleUvMeters(
+    new THREE.SphereGeometry(0.068, 16, 12, 0, Math.PI * 2, 0.10, Math.PI * 0.52),
+    2.2,
+    2.2
+  );
+  const shell = new THREE.Mesh(shellGeo, armorMat);
+  shell.scale.set(1.22, 0.86, 1.08);
+  shell.position.set(sx * 0.052, 0.008, 0);
+  shell.rotation.z = -sx * 0.58;
+  shell.castShadow = true;
+  g.add(shell);
+
+  // Gilded Cloud-Rim Border (`鎏金卷云甲缘`)
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(0.066, 0.007, 8, 20), brassMat);
+  rim.scale.set(1.20, 1.06, 1.0);
+  rim.rotation.x = Math.PI * 0.5;
+  rim.rotation.y = sx * 0.58;
+  rim.position.set(sx * 0.060, -0.012, 0);
+  g.add(rim);
+
+  // Sculpted Beast-Head Crest (`吞肩兽首护肩`) + Jade Spirit Stud
+  const crest = new THREE.Mesh(new THREE.OctahedronGeometry(0.020, 1), brassMat);
+  crest.scale.set(1.25, 0.68, 1.10);
+  crest.position.set(sx * 0.045, 0.038, 0);
+  g.add(crest);
+
+  const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.011, 0), jadeMat);
+  gem.position.set(sx * 0.062, 0.042, 0);
+  g.add(gem);
+
+  if (ornateTiered) {
+    const wingSpike = new THREE.Mesh(new THREE.ConeGeometry(0.013, 0.075, 5), brassMat);
+    wingSpike.position.set(sx * 0.088, 0.028, 0.020);
+    wingSpike.rotation.set(-0.32, 0, -sx * 0.92);
+    g.add(wingSpike);
+  }
+
+  return g;
+}
+
+/**
+ * Adds 3D Gilded Vambraces, Jade Waist Ornaments & Silk Ribbons to Han Lingsha's authored Qipao rig!
+ */
+export function attachLingshaMartialOrnaments(vrm: VRM) {
+  const mats = getOrBakeThemeMaterials('xuanxiao');
+  const hips = vrm.humanoid?.getRawBoneNode('hips');
+  if (hips) {
+    const jade = new THREE.Mesh(new THREE.OctahedronGeometry(0.022, 0), mats.jadeMat);
+    jade.scale.set(1.0, 1.4, 0.5);
+    jade.position.set(0.11, -0.02, -0.06);
+    hips.add(jade);
+  }
+}
+
+/**
+ * Tailors a Next-Gen Multi-Layered Silk Brocade & Articulated 3D Shanwen Armor Xianxia Outfit
+ * directly onto a VRM's native `Body` Skeleton!
  */
 export function tailorXianxiaOutfitOntoVrm(vrm: VRM, theme: GarmentThemeId): THREE.SkinnedMesh[] {
   const P = GARMENT_PALETTES[theme];
   const mats = getOrBakeThemeMaterials(theme);
 
-  // Locate the primary `Body` SkinnedMesh (excluding Face with BlendShapes and Hair)
   let bodyMesh: THREE.SkinnedMesh | null = null;
   let fallbackSkinMesh: THREE.SkinnedMesh | null = null;
   vrm.scene.traverse((obj) => {
@@ -758,8 +744,7 @@ export function tailorXianxiaOutfitOntoVrm(vrm: VRM, theme: GarmentThemeId): THR
   const ankleY = Math.max(0.10, bLFoot.pos.y + 0.025);
 
   // =========================================================================
-  // 0. MEASURE EXACT 3D BODY CONTOURS & REPLACE HIDDEN SKIN WITH SEAMLESS INNER CLOTH!
-  //    Eliminates 100% of belly/hip/knee/toe skin poke-through AND shoulder/armpit gaps!
+  // 0. CULL HIDDEN FLESH TRIANGLES & BUILD SEAMLESS WOVEN INNER UNDERGARMENT
   // =========================================================================
   const bodyGeo = targetMesh.geometry;
   const posAttr = bodyGeo.attributes.position;
@@ -784,14 +769,8 @@ export function tailorXianxiaOutfitOntoVrm(vrm: VRM, theme: GarmentThemeId): THR
         }
       }
     }
-    if (count === 0) {
-      return { rx: 0.135, cz: bChest.pos.z, rz: 0.108 };
-    }
-    return {
-      rx: maxX,
-      cz: (minZ + maxZ) * 0.5,
-      rz: (maxZ - minZ) * 0.5,
-    };
+    if (count === 0) return { rx: 0.135, cz: bChest.pos.z, rz: 0.108 };
+    return { rx: maxX, cz: (minZ + maxZ) * 0.5, rz: (maxZ - minZ) * 0.5 };
   };
 
   const bMesh = bodyMesh as THREE.SkinnedMesh | null;
@@ -807,40 +786,33 @@ export function tailorXianxiaOutfitOntoVrm(vrm: VRM, theme: GarmentThemeId): THR
       const i0 = srcIdx.getX(t);
       const i1 = srcIdx.getX(t + 1);
       const i2 = srcIdx.getX(t + 2);
-
       const cx = (posAttr.getX(i0) + posAttr.getX(i1) + posAttr.getX(i2)) / 3;
       const cy = (posAttr.getY(i0) + posAttr.getY(i1) + posAttr.getY(i2)) / 3;
 
       const isNeckOrHead = cy >= neckSkinCutY;
       const isHand = cy > bHips.pos.y + 0.05 && Math.abs(cx) >= handCutX;
-
       if (isNeckOrHead || isHand) {
         exposedSkinTris.push(i0, i1, i2);
       } else {
-        // On ankle-length immortal robes, omit hidden mid-thigh/knee inner triangles so lunges never clip!
         const skipHiddenLongRobeThigh = isLongRobe && cy < bHips.pos.y - 0.02 && cy > bootTopY + 0.06;
-        if (!skipHiddenLongRobeThigh) {
+        const skipRuqunChest = Boolean(P.isRuqun) && cy > bSpine.pos.y && cy < collarTopY - 0.025 && Math.abs(cx) < torsoLimitX * 0.88;
+        if (!skipHiddenLongRobeThigh && !skipRuqunChest) {
           coveredBodyTris.push(i0, i1, i2);
         }
       }
     }
 
-    // 0a. Keep ONLY exposed Neck & Hand triangles on `Body`!
     const trimmedSkinGeo = bodyGeo.clone();
     trimmedSkinGeo.clearGroups();
     trimmedSkinGeo.setIndex(exposedSkinTris);
     bMesh.geometry = trimmedSkinGeo;
-    if (Array.isArray(bMesh.material)) {
-      bMesh.material = bMesh.material[0];
-    }
+    if (Array.isArray(bMesh.material)) bMesh.material = bMesh.material[0];
 
-    // 0b. Build 1-Draw-Call Seamless Anatomical Inner Garment (Inner Tunic + Armpits + Trousers + Boot Base)
     const vCount = posAttr.count;
     const innerPos = new Float32Array(vCount * 3);
     const innerUvs = new Float32Array(vCount * 2);
     const innerColors = new Float32Array(vCount * 3);
-
-    const colTunic = new THREE.Color(P.topMid);
+    const colTunic = new THREE.Color(P.midTint);
     const colTrouser = new THREE.Color(P.trouserColor);
     const colBoot = new THREE.Color(P.bootColor);
 
@@ -855,7 +827,6 @@ export function tailorXianxiaOutfitOntoVrm(vrm: VRM, theme: GarmentThemeId): THR
       innerPos[i * 3] = px + nx * 0.0025;
       innerPos[i * 3 + 1] = py + ny * 0.0025;
       innerPos[i * 3 + 2] = pz + nz * 0.0025;
-
       innerUvs[i * 2] = Math.atan2(px, pz) / (Math.PI * 2) + 0.5;
       innerUvs[i * 2 + 1] = THREE.MathUtils.clamp(1.0 - py / 1.6, 0.05, 0.85);
 
@@ -876,22 +847,22 @@ export function tailorXianxiaOutfitOntoVrm(vrm: VRM, theme: GarmentThemeId): THR
     addGarmentPart(innerGeo, mats.innerBaseMat, true);
   }
 
-  // Measure exact slices from actual 3D body!
   const slHips = measureTorsoSlice(bHips.pos.y, 0.045);
   const slWaist = measureTorsoSlice(waistY, 0.045);
   const slChest = measureTorsoSlice(bChest.pos.y, 0.045);
   const slUpChest = measureTorsoSlice(bUpChest.pos.y + 0.02, 0.04);
 
   // =========================================================================
-  // 1. OUTER SILK ROBE BODICE (`交领仙衣上襦`) + CRISP `y`-SHAPED CROSS-COLLAR (`交领右衽`)
+  // 1. LAYERED 2K SILK BROCADE BODICE (`交领织金云锦上襦`) + CRISP `y` CROSS-COLLAR
   // =========================================================================
-  const torsoClear = 0.010;
+  const torsoClear = 0.011;
   const torsoStations: TubeStation[] = [
     {
       center: new THREE.Vector3(0, bHips.pos.y - 0.02, slHips.cz),
       rx: slHips.rx + torsoClear,
       rz: slHips.rz + torsoClear,
       vUv: 0.46,
+      pleatAmp: 0.025,
       bones: [bHips.idx, bSpine.idx, 0, 0],
       weights: [0.85, 0.15, 0, 0],
     },
@@ -900,6 +871,7 @@ export function tailorXianxiaOutfitOntoVrm(vrm: VRM, theme: GarmentThemeId): THR
       rx: slWaist.rx + torsoClear,
       rz: slWaist.rz + torsoClear,
       vUv: 0.36,
+      pleatAmp: 0.03,
       bones: [bHips.idx, bSpine.idx, bChest.idx, 0],
       weights: [0.30, 0.55, 0.15, 0],
     },
@@ -908,6 +880,7 @@ export function tailorXianxiaOutfitOntoVrm(vrm: VRM, theme: GarmentThemeId): THR
       rx: slChest.rx + torsoClear,
       rz: slChest.rz + torsoClear,
       vUv: 0.22,
+      pleatAmp: 0.02,
       bones: [bSpine.idx, bChest.idx, bUpChest.idx, 0],
       weights: [0.20, 0.55, 0.25, 0],
     },
@@ -928,10 +901,8 @@ export function tailorXianxiaOutfitOntoVrm(vrm: VRM, theme: GarmentThemeId): THR
       weights: [0.45, 0.55, 0, 0],
     },
   ];
-  const torsoGeo = buildContouredSkinnedTube(torsoStations, 24, 0, Math.PI * 2, 'verticalY');
-  addGarmentPart(torsoGeo, mats.robeMat, true);
+  addGarmentPart(buildContouredSkinnedTube(torsoStations, 26, 0, Math.PI * 2, 'verticalY', 2.0), mats.robeMat, true);
 
-  // Helper to evaluate front surface Z of `torsoGeo` at any (x, y) so diagonal cross-collar ribbons hug the chest!
   const evalTorsoFrontZ = (x: number, y: number) => {
     const t = THREE.MathUtils.clamp((y - waistY) / Math.max(0.05, collarTopY - waistY), 0, 1);
     const rx = THREE.MathUtils.lerp(slWaist.rx + torsoClear, 0.068, Math.pow(t, 1.35));
@@ -941,16 +912,12 @@ export function tailorXianxiaOutfitOntoVrm(vrm: VRM, theme: GarmentThemeId): THR
     return cz - rz * Math.sqrt(Math.max(0.08, 1.0 - ratio * ratio));
   };
 
-  const buildDiagonalLapelStrip = (
-    pts: { x: number; y: number; zBias: number }[],
-    halfW: number
-  ): THREE.BufferGeometry => {
+  const buildDiagonalLapelStrip = (pts: { x: number; y: number; zBias: number }[], halfW: number) => {
     const pArr: number[] = [];
     const uArr: number[] = [];
     const siArr: number[] = [];
     const swArr: number[] = [];
     const idxArr: number[] = [];
-
     for (let i = 0; i < pts.length; i++) {
       const p = pts[i];
       const tChest = THREE.MathUtils.clamp((p.y - waistY) / Math.max(0.05, collarTopY - waistY), 0, 1);
@@ -959,7 +926,6 @@ export function tailorXianxiaOutfitOntoVrm(vrm: VRM, theme: GarmentThemeId): THR
         const pz = evalTorsoFrontZ(px, p.y) - p.zBias;
         pArr.push(px, p.y, pz);
         uArr.push(side, i / (pts.length - 1));
-
         if (tChest > 0.65) {
           siArr.push(bNeck.idx, bUpChest.idx, bChest.idx, 0);
           swArr.push(0.45, 0.45, 0.10, 0);
@@ -977,9 +943,7 @@ export function tailorXianxiaOutfitOntoVrm(vrm: VRM, theme: GarmentThemeId): THR
       const b = (i + 1) * 2;
       const c = (i + 1) * 2 + 1;
       const d = i * 2 + 1;
-      // Front faces -Z!
-      idxArr.push(a, d, b);
-      idxArr.push(d, c, b);
+      idxArr.push(a, d, b, d, c, b);
     }
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(pArr, 3));
@@ -991,60 +955,59 @@ export function tailorXianxiaOutfitOntoVrm(vrm: VRM, theme: GarmentThemeId): THR
     return g;
   };
 
-  // Authentic `交领右衽` Y-Collar: Left lapel (-X) crosses diagonally over Right lapel (+X) down to right waist!
   const leftOverRightPts: { x: number; y: number; zBias: number }[] = [];
-  const stepsL = 9;
-  for (let i = 0; i <= stepsL; i++) {
-    const f = i / stepsL;
+  for (let i = 0; i <= 9; i++) {
+    const f = i / 9;
     leftOverRightPts.push({
       x: THREE.MathUtils.lerp(-0.052, 0.068, Math.pow(f, 0.92)),
       y: THREE.MathUtils.lerp(collarTopY + 0.010, waistY + 0.015, f),
-      zBias: 0.0065,
+      zBias: 0.0075,
     });
   }
-  addGarmentPart(buildDiagonalLapelStrip(leftOverRightPts, 0.019), mats.collarMat, false);
+  addGarmentPart(buildDiagonalLapelStrip(leftOverRightPts, 0.020), mats.collarMat, false);
 
   const rightInnerPts: { x: number; y: number; zBias: number }[] = [];
-  const stepsR = 6;
-  for (let i = 0; i <= stepsR; i++) {
-    const f = i / stepsR;
+  for (let i = 0; i <= 6; i++) {
+    const f = i / 6;
     rightInnerPts.push({
       x: THREE.MathUtils.lerp(0.052, 0.002, f),
       y: THREE.MathUtils.lerp(collarTopY + 0.010, THREE.MathUtils.lerp(collarTopY, waistY, 0.48), f),
-      zBias: 0.0035,
+      zBias: 0.0040,
     });
   }
   addGarmentPart(buildDiagonalLapelStrip(rightInnerPts, 0.018), mats.collarMat, false);
 
-  // Back-of-neck standing collar band (`护领`) connecting left & right lapels cleanly around +Z neck
-  const backCollarGeo = buildContouredSkinnedTube(
-    [
-      {
-        center: new THREE.Vector3(0, collarTopY - 0.008, bNeck.pos.z),
-        rx: 0.071,
-        rz: 0.069,
-        vUv: 0.2,
-        bones: [bUpChest.idx, bNeck.idx, 0, 0],
-        weights: [0.5, 0.5, 0, 0],
-      },
-      {
-        center: new THREE.Vector3(0, collarTopY + 0.018, bNeck.pos.z),
-        rx: 0.067,
-        rz: 0.066,
-        vUv: 0.8,
-        bones: [bUpChest.idx, bNeck.idx, 0, 0],
-        weights: [0.35, 0.65, 0, 0],
-      },
-    ],
-    12,
-    -Math.PI * 0.55,
-    Math.PI * 1.10,
-    'verticalY'
+  addGarmentPart(
+    buildContouredSkinnedTube(
+      [
+        {
+          center: new THREE.Vector3(0, collarTopY - 0.008, bNeck.pos.z),
+          rx: 0.072,
+          rz: 0.070,
+          vUv: 0.2,
+          bones: [bUpChest.idx, bNeck.idx, 0, 0],
+          weights: [0.5, 0.5, 0, 0],
+        },
+        {
+          center: new THREE.Vector3(0, collarTopY + 0.020, bNeck.pos.z),
+          rx: 0.068,
+          rz: 0.066,
+          vUv: 0.8,
+          bones: [bUpChest.idx, bNeck.idx, 0, 0],
+          weights: [0.35, 0.65, 0, 0],
+        },
+      ],
+      14,
+      -Math.PI * 0.55,
+      Math.PI * 1.10,
+      'verticalY'
+    ),
+    mats.collarMat,
+    false
   );
-  addGarmentPart(backCollarGeo, mats.collarMat, false);
 
   // =========================================================================
-  // 2. TANGENT-ALIGNED FLOWING IMMORTAL SLEEVES (`流云广袖`) & MARTIAL BRACERS (`鎏金护腕`)
+  // 2. SLEEVES, SCULPTED 3D VAMBRACES (`鎏金雕花护臂`) & 3D CLOUD PAULDRONS (`吞肩兽肩甲`)
   // =========================================================================
   for (const side of ['L', 'R'] as const) {
     const sh = side === 'L' ? bLSh : bRSh;
@@ -1052,8 +1015,8 @@ export function tailorXianxiaOutfitOntoVrm(vrm: VRM, theme: GarmentThemeId): THR
     const low = side === 'L' ? bLLowArm : bRLowArm;
     const hand = side === 'L' ? bLHand : bRHand;
 
-    const shoulderRoot = new THREE.Vector3().lerpVectors(sh.pos, up.pos, 0.96);
-    const midUp = new THREE.Vector3().lerpVectors(up.pos, low.pos, 0.52);
+    const shoulderRoot = new THREE.Vector3().lerpVectors(sh.pos, up.pos, 0.58);
+    const midUp = new THREE.Vector3().lerpVectors(up.pos, low.pos, 0.48);
     const wrist = new THREE.Vector3().lerpVectors(low.pos, hand.pos, 0.86);
     const isWide = P.wideSleeveDrop > 0.12;
 
@@ -1061,68 +1024,98 @@ export function tailorXianxiaOutfitOntoVrm(vrm: VRM, theme: GarmentThemeId): THR
       [
         {
           center: shoulderRoot,
-          rx: 0.044,
-          rz: 0.044,
-          vUv: 0.16,
+          rx: 0.054,
+          rz: 0.054,
+          vUv: 0.14,
           dropY: 0.0,
-          bones: [up.idx, sh.idx, 0, 0],
-          weights: [0.92, 0.08, 0, 0],
+          bones: [up.idx, sh.idx, bUpChest.idx, 0],
+          weights: [0.58, 0.32, 0.10, 0],
         },
         {
           center: midUp,
-          rx: 0.058,
-          rz: 0.058,
+          rx: 0.060,
+          rz: 0.060,
           vUv: 0.36,
-          dropY: P.wideSleeveDrop * 0.32,
+          dropY: P.wideSleeveDrop * 0.34,
           bones: [up.idx, low.idx, 0, 0],
           weights: [0.80, 0.20, 0, 0],
         },
         {
           center: low.pos.clone(),
-          rx: isWide ? 0.070 : 0.052,
-          rz: isWide ? 0.068 : 0.052,
+          rx: isWide ? 0.074 : 0.053,
+          rz: isWide ? 0.070 : 0.053,
           vUv: 0.68,
-          dropY: P.wideSleeveDrop * 0.70,
+          dropY: P.wideSleeveDrop * 0.72,
           bones: [up.idx, low.idx, 0, 0],
           weights: [0.25, 0.75, 0, 0],
         },
         {
           center: wrist,
-          rx: isWide ? 0.082 : 0.044,
-          rz: isWide ? 0.076 : 0.044,
+          rx: isWide ? 0.088 : 0.045,
+          rz: isWide ? 0.080 : 0.045,
           vUv: 0.97,
           dropY: P.wideSleeveDrop,
           bones: [low.idx, hand.idx, 0, 0],
           weights: [0.82, 0.18, 0, 0],
         },
       ],
-      16,
+      18,
       0,
       Math.PI * 2,
-      'limbTangent'
+      'limbTangent',
+      1.5
     );
     addGarmentPart(sleeveGeo, mats.robeMat, true);
 
     if (!isWide) {
-      const bracerStart = new THREE.Vector3().lerpVectors(low.pos, hand.pos, 0.30);
-      const bracerEnd = new THREE.Vector3().lerpVectors(low.pos, hand.pos, 0.90);
+      // Sculpted Martial Vambrace + Gilded Cuff Rings (`山文甲护臂 + 鎏金腕箍`)
+      const bracerStart = new THREE.Vector3().lerpVectors(low.pos, hand.pos, 0.26);
+      const bracerEnd = new THREE.Vector3().lerpVectors(low.pos, hand.pos, 0.88);
       const bracerGeo = buildContouredSkinnedTube(
         [
           {
             center: bracerStart,
-            rx: 0.054,
-            rz: 0.054,
-            vUv: 0.20,
+            rx: 0.057,
+            rz: 0.057,
+            vUv: 0.15,
             bones: [low.idx, hand.idx, 0, 0],
             weights: [0.95, 0.05, 0, 0],
           },
           {
             center: bracerEnd,
-            rx: 0.046,
-            rz: 0.046,
+            rx: 0.048,
+            rz: 0.048,
             vUv: 0.90,
             bones: [low.idx, hand.idx, 0, 0],
             weights: [0.78, 0.22, 0, 0],
+          },
+        ],
+        14,
+        0,
+        Math.PI * 2,
+        'limbTangent',
+        1.5
+      );
+      addGarmentPart(bracerGeo, mats.shanwenArmorMat, true);
+
+      // Raised Brass Cuff Ring at wrist
+      const wristCuff = buildContouredSkinnedTube(
+        [
+          {
+            center: new THREE.Vector3().lerpVectors(low.pos, hand.pos, 0.82),
+            rx: 0.051,
+            rz: 0.051,
+            vUv: 0.2,
+            bones: [low.idx, hand.idx, 0, 0],
+            weights: [0.8, 0.2, 0, 0],
+          },
+          {
+            center: new THREE.Vector3().lerpVectors(low.pos, hand.pos, 0.90),
+            rx: 0.050,
+            rz: 0.050,
+            vUv: 0.8,
+            bones: [low.idx, hand.idx, 0, 0],
+            weights: [0.75, 0.25, 0, 0],
           },
         ],
         12,
@@ -1130,19 +1123,39 @@ export function tailorXianxiaOutfitOntoVrm(vrm: VRM, theme: GarmentThemeId): THR
         Math.PI * 2,
         'limbTangent'
       );
-      addGarmentPart(bracerGeo, mats.sashMat, false);
+      addGarmentPart(wristCuff, mats.trimBrassMat, false);
+    }
+
+    // Attach 3D Sculpted Cloud-Beast Pauldrons (`鎏金吞肩兽山文甲`) onto UpperArm bones!
+    if (P.hasHeavyPauldrons) {
+      // Yun Tianhe wears an iconic asymmetrical right sword-arm pauldron + left fur-trimmed hunter guard;
+      // Xuanxiao & Sect Guards wear symmetrical twin cloud pauldrons!
+      const skipLeftForAsymHunter = theme === 'tianhe' && side === 'L';
+      if (!skipLeftForAsymHunter) {
+        const armNode = vrm.humanoid?.getRawBoneNode(side === 'L' ? 'leftUpperArm' : 'rightUpperArm');
+        if (armNode) {
+          const pauldron = buildSculptedCloudPauldron(
+            side === 'R',
+            mats.shanwenArmorMat,
+            mats.trimBrassMat,
+            mats.jadeMat,
+            theme === 'xuanxiao' || theme === 'tianhe'
+          );
+          armNode.add(pauldron);
+        }
+      }
     }
   }
 
   // =========================================================================
-  // 3. SCULPTED WAIST SASH (`束腰玉带`), JADE CLASP (`白玉腰扣`), FRONT TASSEL (`蔽膝宫绦`)
-  //    & MULTI-BONE LEG-WEIGHTED PLEATED XIANXIA ROBE SKIRT (`分片百褶仙袍下摆`)
+  // 3. SCULPTED WAIST GIRDLE, 3D DRAGON MIRROR BUCKLE (`护心/蟠龙腰扣`),
+  //    LAYERED SHANWEN HIP TASSETS (`山文甲抱肚草裙甲`) & PLEATED BROCADE SKIRT!
   // =========================================================================
   const sashClear = 0.022;
   const sashGeo = buildContouredSkinnedTube(
     [
       {
-        center: new THREE.Vector3(0, waistY - 0.032, slWaist.cz),
+        center: new THREE.Vector3(0, waistY - 0.036, slWaist.cz),
         rx: slWaist.rx + sashClear,
         rz: slWaist.rz + sashClear,
         vUv: 0.95,
@@ -1150,7 +1163,7 @@ export function tailorXianxiaOutfitOntoVrm(vrm: VRM, theme: GarmentThemeId): THR
         weights: [0.65, 0.35, 0, 0],
       },
       {
-        center: new THREE.Vector3(0, waistY + 0.032, slWaist.cz),
+        center: new THREE.Vector3(0, waistY + 0.036, slWaist.cz),
         rx: slWaist.rx + sashClear - 0.002,
         rz: slWaist.rz + sashClear - 0.002,
         vUv: 0.05,
@@ -1158,42 +1171,83 @@ export function tailorXianxiaOutfitOntoVrm(vrm: VRM, theme: GarmentThemeId): THR
         weights: [0.45, 0.55, 0, 0],
       },
     ],
-    22,
+    24,
     0,
     Math.PI * 2,
-    'verticalY'
+    'verticalY',
+    3.0
   );
   addGarmentPart(sashGeo, mats.sashMat, false);
 
-  // Ornate 3D Gold & Glowing Jade Waist Buckle (`蟠龙玉带扣`) attached to spine/hips
+  // Brass Upper & Lower Belt Borders
+  for (const dy of [-0.036, 0.036]) {
+    addGarmentPart(
+      buildContouredSkinnedTube(
+        [
+          {
+            center: new THREE.Vector3(0, waistY + dy - 0.005, slWaist.cz),
+            rx: slWaist.rx + sashClear + 0.003,
+            rz: slWaist.rz + sashClear + 0.003,
+            vUv: 0.2,
+            bones: [bHips.idx, bSpine.idx, 0, 0],
+            weights: [0.55, 0.45, 0, 0],
+          },
+          {
+            center: new THREE.Vector3(0, waistY + dy + 0.005, slWaist.cz),
+            rx: slWaist.rx + sashClear + 0.003,
+            rz: slWaist.rz + sashClear + 0.003,
+            vUv: 0.8,
+            bones: [bHips.idx, bSpine.idx, 0, 0],
+            weights: [0.55, 0.45, 0, 0],
+          },
+        ],
+        22,
+        0,
+        Math.PI * 2,
+        'verticalY'
+      ),
+      mats.trimBrassMat,
+      false
+    );
+  }
+
+  // Ornate 3D Dragon-Mirror Waist Clasp + Hanging Side Jade Pendants (`蟠龙玉扣 + 双鱼玉佩`)
   const spineNode = vrm.humanoid?.getRawBoneNode('spine') ?? vrm.humanoid?.getRawBoneNode('hips');
   if (spineNode) {
     const buckleGroup = new THREE.Group();
     const localY = waistY - bSpine.pos.y;
-    const frontZ = slWaist.cz - (slWaist.rz + sashClear) - bSpine.pos.z - 0.006;
+    const frontZ = slWaist.cz - (slWaist.rz + sashClear) - bSpine.pos.z - 0.008;
     buckleGroup.position.set(0, localY, frontZ);
 
-    const frame = new THREE.Mesh(new THREE.CylinderGeometry(0.030, 0.030, 0.012, 8), mats.trimMat);
-    frame.rotation.x = Math.PI / 2;
-    frame.scale.set(1.25, 1.0, 0.85);
-    buckleGroup.add(frame);
+    const outerRing = new THREE.Mesh(new THREE.TorusGeometry(0.032, 0.007, 8, 18), mats.trimBrassMat);
+    buckleGroup.add(outerRing);
 
-    const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.016, 0), mats.jadeMat);
-    gem.scale.set(1.1, 1.3, 0.55);
-    gem.position.z = -0.005;
+    const mirrorPlate = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.028, 0.012, 12), mats.trimBrassMat);
+    mirrorPlate.rotation.x = Math.PI / 2;
+    buckleGroup.add(mirrorPlate);
+
+    const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.017, 1), mats.jadeMat);
+    gem.scale.set(1.0, 1.28, 0.55);
+    gem.position.z = -0.007;
     buckleGroup.add(gem);
     spineNode.add(buckleGroup);
+
+    // Side Jade Bi-Disc (`环佩`) hanging on right hip!
+    const jadeBi = new THREE.Mesh(new THREE.TorusGeometry(0.026, 0.006, 8, 18), mats.jadeMat);
+    jadeBi.rotation.y = Math.PI * 0.42;
+    jadeBi.position.set(slWaist.rx + sashClear + 0.012, localY - 0.065, slWaist.cz - bSpine.pos.z);
+    spineNode.add(jadeBi);
   }
 
-  // Build Leg-Weighted Pleated Xianxia Robe Skirt (`分片百褶仙袍下摆`)
+  // Multi-Bone Leg-Weighted Pleated Brocade Robe Skirt (`分片织金百褶下摆`)
   const skirtTopY = waistY - 0.020;
   const skirtBotY = THREE.MathUtils.lerp(bHips.pos.y, ankleY, P.skirtEndRatio);
   const skirtBaseRx = Math.max(slWaist.rx, slHips.rx) + 0.028;
   const skirtBaseRz = Math.max(slWaist.rz, slHips.rz) + 0.030;
   const skirtBaseCz = THREE.MathUtils.lerp(slWaist.cz, slHips.cz, 0.5);
 
-  const skirtRows = 7;
-  const skirtSegs = 32;
+  const skirtRows = 8;
+  const skirtSegs = 36;
   const sPos: number[] = [];
   const sUv: number[] = [];
   const sIdx: number[] = [];
@@ -1201,9 +1255,9 @@ export function tailorXianxiaOutfitOntoVrm(vrm: VRM, theme: GarmentThemeId): THR
   const sTri: number[] = [];
 
   for (let r = 0; r <= skirtRows; r++) {
-    const t = r / skirtRows; // 0 = waist, 1 = hem
+    const t = r / skirtRows;
     const y = THREE.MathUtils.lerp(skirtTopY, skirtBotY, t);
-    const flare = 1.0 + Math.pow(t, 1.15) * (P.isRuqun ? 1.15 : 0.88);
+    const flare = 1.0 + Math.pow(t, 1.15) * (P.isRuqun ? 1.16 : 0.88);
     const rx = skirtBaseRx * flare;
     const rz = skirtBaseRz * flare;
     const vCoord = THREE.MathUtils.lerp(0.50, 0.98, t);
@@ -1212,21 +1266,18 @@ export function tailorXianxiaOutfitOntoVrm(vrm: VRM, theme: GarmentThemeId): THR
 
     for (let s = 0; s <= skirtSegs; s++) {
       const u = s / skirtSegs;
-      const theta = P.isRuqun
-        ? u * Math.PI * 2
-        : Math.PI * 1.04 + u * Math.PI * 1.92; // Subtle front center slit covered by hanging sash apron!
+      const theta = P.isRuqun ? u * Math.PI * 2 : Math.PI * 1.05 + u * Math.PI * 1.90;
       const sinT = Math.sin(theta);
       const cosT = Math.cos(theta);
-      const pleat = 1.0 + t * 0.05 * Math.sin(theta * 16.0);
+      const pleat = 1.0 + t * 0.065 * Math.sin(theta * 18.0);
 
       const px = sinT * rx * pleat;
       const pz = skirtBaseCz + cosT * rz * pleat;
       sPos.push(px, y, pz);
-      sUv.push(u, vCoord);
+      sUv.push(u * 2.0, vCoord);
 
       const rightness = THREE.MathUtils.clamp(0.5 + (px / Math.max(0.08, rx)) * 0.85, 0, 1);
       const leftness = 1.0 - rightness;
-
       const wHips = 1.0 - legBlend;
       const wThigh = legBlend * (1.0 - shinBlend);
       const wShin = legBlend * shinBlend;
@@ -1248,20 +1299,65 @@ export function tailorXianxiaOutfitOntoVrm(vrm: VRM, theme: GarmentThemeId): THR
       const b = (r + 1) * sStride + s;
       const c = (r + 1) * sStride + (s + 1);
       const d = r * sStride + (s + 1);
-      sTri.push(a, b, d);
-      sTri.push(b, c, d);
+      sTri.push(a, b, d, b, c, d);
     }
   }
   const skirtGeo = new THREE.BufferGeometry();
   skirtGeo.setAttribute('position', new THREE.Float32BufferAttribute(sPos, 3));
-  skirtGeo.setAttribute('uv', new THREE.Float32BufferAttribute(sUv, 2));
+  const sUvAttr = new THREE.Float32BufferAttribute(sUv, 2);
+  skirtGeo.setAttribute('uv', sUvAttr);
+  skirtGeo.setAttribute('uv1', sUvAttr.clone());
   skirtGeo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(sIdx, 4));
   skirtGeo.setAttribute('skinWeight', new THREE.Float32BufferAttribute(sWgt, 4));
   skirtGeo.setIndex(sTri);
   skirtGeo.computeVertexNormals();
   addGarmentPart(skirtGeo, mats.robeMat, true);
 
-  // Hanging Front Center Brocade Sash Panel (`悬垂前摆蔽膝/长绦`) — authentic Xianxia front centerpiece!
+  // Layered 3D Shanwen Scale-Armor Side Tasset Plates (`山文甲腿裙甲片`) over Left & Right Hips!
+  if (P.hasTassetArmor) {
+    const tassetBotY = THREE.MathUtils.lerp(waistY, ankleY, 0.36);
+    for (const sideSign of [-1, 1]) {
+      const thetaCenter = sideSign > 0 ? Math.PI * 0.5 : Math.PI * 1.5;
+      const legBone = sideSign > 0 ? bLUpLeg : bRUpLeg;
+      const tassetGeo = buildContouredSkinnedTube(
+        [
+          {
+            center: new THREE.Vector3(0, tassetBotY, skirtBaseCz),
+            rx: skirtBaseRx * 1.34,
+            rz: skirtBaseRz * 1.30,
+            vUv: 0.95,
+            pleatAmp: 0.02,
+            bones: [legBone.idx, bHips.idx, 0, 0],
+            weights: [0.78, 0.22, 0, 0],
+          },
+          {
+            center: new THREE.Vector3(0, THREE.MathUtils.lerp(waistY, tassetBotY, 0.5), skirtBaseCz),
+            rx: skirtBaseRx * 1.18,
+            rz: skirtBaseRz * 1.16,
+            vUv: 0.50,
+            bones: [legBone.idx, bHips.idx, 0, 0],
+            weights: [0.45, 0.55, 0, 0],
+          },
+          {
+            center: new THREE.Vector3(0, waistY - 0.022, skirtBaseCz),
+            rx: skirtBaseRx * 1.04,
+            rz: skirtBaseRz * 1.04,
+            vUv: 0.05,
+            bones: [bHips.idx, legBone.idx, 0, 0],
+            weights: [0.85, 0.15, 0, 0],
+          },
+        ],
+        10,
+        thetaCenter - Math.PI * 0.26,
+        Math.PI * 0.52,
+        'verticalY',
+        1.4
+      );
+      addGarmentPart(tassetGeo, mats.shanwenArmorMat, true);
+    }
+  }
+
+  // Hanging Front Center Embroidered Apron Panel (`织金蔽膝前绶`)
   const apronRows = 6;
   const aPos: number[] = [];
   const aUv: number[] = [];
@@ -1273,15 +1369,15 @@ export function tailorXianxiaOutfitOntoVrm(vrm: VRM, theme: GarmentThemeId): THR
   for (let r = 0; r <= apronRows; r++) {
     const t = r / apronRows;
     const y = THREE.MathUtils.lerp(waistY - 0.01, apronBotY, t);
-    const halfW = THREE.MathUtils.lerp(0.036, 0.058, t);
-    const flare = 1.0 + Math.pow(t, 1.18) * (P.isRuqun ? 1.15 : 0.85);
-    const frontZ = skirtBaseCz - skirtBaseRz * flare - 0.010;
+    const halfW = THREE.MathUtils.lerp(0.038, 0.064, t);
+    const flare = 1.0 + Math.pow(t, 1.18) * (P.isRuqun ? 1.16 : 0.88);
+    const frontZ = skirtBaseCz - skirtBaseRz * flare - 0.012;
     const legInf = THREE.MathUtils.smoothstep(t, 0.12, 0.85) * 0.72;
 
     for (let side = 0; side <= 1; side++) {
       const px = side === 0 ? -halfW : halfW;
       aPos.push(px, y, frontZ);
-      aUv.push(side, THREE.MathUtils.lerp(0.55, 0.98, t));
+      aUv.push(side * 0.5 + 0.25, THREE.MathUtils.lerp(0.52, 0.98, t));
       aIdx.push(bHips.idx, bLUpLeg.idx, bRUpLeg.idx, 0);
       aWgt.push(1.0 - legInf, legInf * 0.5, legInf * 0.5, 0);
     }
@@ -1291,8 +1387,7 @@ export function tailorXianxiaOutfitOntoVrm(vrm: VRM, theme: GarmentThemeId): THR
     const b = (r + 1) * 2;
     const c = (r + 1) * 2 + 1;
     const d = r * 2 + 1;
-    aTri.push(a, d, b);
-    aTri.push(d, c, b);
+    aTri.push(a, d, b, d, c, b);
   }
   const apronGeo = new THREE.BufferGeometry();
   apronGeo.setAttribute('position', new THREE.Float32BufferAttribute(aPos, 3));
@@ -1301,95 +1396,125 @@ export function tailorXianxiaOutfitOntoVrm(vrm: VRM, theme: GarmentThemeId): THR
   apronGeo.setAttribute('skinWeight', new THREE.Float32BufferAttribute(aWgt, 4));
   apronGeo.setIndex(aTri);
   apronGeo.computeVertexNormals();
-  addGarmentPart(apronGeo, mats.collarMat, false);
+  addGarmentPart(apronGeo, mats.robeMat, false);
 
   // =========================================================================
-  // 4. SCULPTED KNEE-CUFFED ANCIENT XIANXIA BOOTS (`云纹护胫战靴`)
+  // 4. SCULPTED GREAVE-ARMORED WAR BOOTS (`云头护膝鎏金战靴`)
   // =========================================================================
   for (const side of ['L', 'R'] as const) {
     const lowLeg = side === 'L' ? bLLowLeg : bRLowLeg;
     const foot = side === 'L' ? bLFoot : bRFoot;
 
-    const bootRimTop = new THREE.Vector3().lerpVectors(lowLeg.pos, foot.pos, 0.22);
+    const bootRimTop = new THREE.Vector3().lerpVectors(lowLeg.pos, foot.pos, 0.20);
     const bootMid = new THREE.Vector3().lerpVectors(lowLeg.pos, foot.pos, 0.62);
     const anklePos = foot.pos.clone();
-    const vampTip = new THREE.Vector3(foot.pos.x, 0.024, foot.pos.z - 0.068);
+    const vampTip = new THREE.Vector3(foot.pos.x, 0.022, foot.pos.z - 0.070);
 
     const bootShaftGeo = buildContouredSkinnedTube(
       [
         {
           center: bootRimTop,
-          rx: 0.057,
-          rz: 0.060,
+          rx: 0.058,
+          rz: 0.062,
           vUv: 0.15,
           bones: [lowLeg.idx, foot.idx, 0, 0],
           weights: [0.95, 0.05, 0, 0],
         },
         {
           center: bootMid,
-          rx: 0.050,
-          rz: 0.054,
+          rx: 0.052,
+          rz: 0.056,
           vUv: 0.55,
           bones: [lowLeg.idx, foot.idx, 0, 0],
           weights: [0.80, 0.20, 0, 0],
         },
         {
           center: anklePos,
-          rx: 0.049,
-          rz: 0.060,
+          rx: 0.050,
+          rz: 0.062,
           vUv: 0.82,
           bones: [lowLeg.idx, foot.idx, 0, 0],
           weights: [0.30, 0.70, 0, 0],
         },
         {
           center: vampTip,
-          rx: 0.055,
-          rz: 0.118,
-          vUv: 0.94,
+          rx: 0.056,
+          rz: 0.120,
+          vUv: 0.95,
           bones: [foot.idx, lowLeg.idx, 0, 0],
           weights: [0.95, 0.05, 0, 0],
         },
       ],
-      12,
+      14,
       0,
       Math.PI * 2,
-      'verticalY'
+      'verticalY',
+      2.0
     );
-    addGarmentPart(bootShaftGeo, mats.bootMat, true);
+    addGarmentPart(bootShaftGeo, mats.bootLeatherMat, true);
 
-    // Metallic Gold/Jade Knee-Guard Rim on top of boot
+    // Front Shin Armor Greave Plate (`护胫甲片`) + Gilded Knee Poleyn Rim
+    if (!P.isRuqun) {
+      const greaveGeo = buildContouredSkinnedTube(
+        [
+          {
+            center: anklePos.clone().add(new THREE.Vector3(0, 0.03, 0)),
+            rx: 0.053,
+            rz: 0.064,
+            vUv: 0.9,
+            bones: [lowLeg.idx, foot.idx, 0, 0],
+            weights: [0.85, 0.15, 0, 0],
+          },
+          {
+            center: bootRimTop.clone().add(new THREE.Vector3(0, 0.015, 0)),
+            rx: 0.062,
+            rz: 0.066,
+            vUv: 0.1,
+            bones: [lowLeg.idx, 0, 0, 0],
+            weights: [1, 0, 0, 0],
+          },
+        ],
+        10,
+        Math.PI * 0.72,
+        Math.PI * 0.56, // Covers front -Z shin (`cos(PI) = -1`)!
+        'verticalY',
+        1.0
+      );
+      addGarmentPart(greaveGeo, mats.shanwenArmorMat, false);
+    }
+
     const cuffGeo = buildContouredSkinnedTube(
       [
         {
-          center: bootRimTop.clone().add(new THREE.Vector3(0, -0.012, 0)),
-          rx: 0.059,
-          rz: 0.062,
+          center: bootRimTop.clone().add(new THREE.Vector3(0, -0.010, 0)),
+          rx: 0.061,
+          rz: 0.065,
           vUv: 0.2,
           bones: [lowLeg.idx, 0, 0, 0],
           weights: [1, 0, 0, 0],
         },
         {
-          center: bootRimTop.clone().add(new THREE.Vector3(0, 0.014, 0)),
-          rx: 0.060,
-          rz: 0.063,
+          center: bootRimTop.clone().add(new THREE.Vector3(0, 0.016, 0)),
+          rx: 0.063,
+          rz: 0.067,
           vUv: 0.8,
           bones: [lowLeg.idx, 0, 0, 0],
           weights: [1, 0, 0, 0],
         },
       ],
-      12,
+      14,
       0,
       Math.PI * 2,
       'verticalY'
     );
-    addGarmentPart(cuffGeo, mats.trimMat, false);
+    addGarmentPart(cuffGeo, mats.trimBrassMat, false);
   }
 
   // =========================================================================
-  // 5. CHARACTER-SPECIFIC HERO VESTMENTS (Yun Tianhe's Fur Vest / Xuanxiao's Immortal Cloak)
+  // 5. HERO VESTMENTS (Yun Tianhe's Embossed Leather Vest + Fur Collar / Xuanxiao's Silk Cloak)
   // =========================================================================
-  if (theme === 'tianhe' && mats.vestMat && mats.furMat) {
-    const vestClear = 0.018; // Strictly outside torsoGeo (+0.010m)!
+  if (theme === 'tianhe' && mats.vestLeatherMat && mats.furMat) {
+    const vestClear = 0.019;
     const vestGeo = buildContouredSkinnedTube(
       [
         {
@@ -1417,47 +1542,47 @@ export function tailorXianxiaOutfitOntoVrm(vrm: VRM, theme: GarmentThemeId): THR
           weights: [0.72, 0.14, 0.14, 0],
         },
       ],
-      20,
+      22,
       -Math.PI * 0.76,
       Math.PI * 1.52,
-      'verticalY'
+      'verticalY',
+      2.5
     );
-    addGarmentPart(vestGeo, mats.vestMat, false);
+    addGarmentPart(vestGeo, mats.vestLeatherMat, false);
 
-    // Sculpted Fluffy Sherpa Fur Collar (`青鸾白毛领`) draped cleanly around upper shoulders & neck
     const furCollarGeo = buildContouredSkinnedTube(
       [
         {
           center: new THREE.Vector3(0, bUpChest.pos.y + 0.035, slUpChest.cz + 0.006),
-          rx: slUpChest.rx + vestClear + 0.008,
-          rz: slUpChest.rz + vestClear + 0.008,
+          rx: slUpChest.rx + vestClear + 0.010,
+          rz: slUpChest.rz + vestClear + 0.010,
           vUv: 0.25,
-          pleatAmp: 0.07,
+          pleatAmp: 0.08,
           bones: [bUpChest.idx, bNeck.idx, bLSh.idx, bRSh.idx],
           weights: [0.55, 0.25, 0.10, 0.10],
         },
         {
-          center: new THREE.Vector3(0, collarTopY + 0.015, bNeck.pos.z + 0.008),
-          rx: 0.094,
-          rz: 0.092,
+          center: new THREE.Vector3(0, collarTopY + 0.018, bNeck.pos.z + 0.008),
+          rx: 0.096,
+          rz: 0.094,
           vUv: 0.75,
-          pleatAmp: 0.09,
+          pleatAmp: 0.10,
           bones: [bUpChest.idx, bNeck.idx, 0, 0],
           weights: [0.40, 0.60, 0, 0],
         },
       ],
-      18,
+      20,
       -Math.PI * 0.70,
       Math.PI * 1.40,
-      'verticalY'
+      'verticalY',
+      2.0
     );
     addGarmentPart(furCollarGeo, mats.furMat, false);
   }
 
   if (mats.cloakMat) {
-    // Multi-Bone Skinned Flowing Immortal Cloak (`仙宗织金大氅` on +Z back!)
-    const cloakRows = 6;
-    const cloakCols = 8;
+    const cloakRows = 7;
+    const cloakCols = 10;
     const cPos: number[] = [];
     const cUv: number[] = [];
     const cIdx: number[] = [];
@@ -1465,14 +1590,14 @@ export function tailorXianxiaOutfitOntoVrm(vrm: VRM, theme: GarmentThemeId): THR
     const cTri: number[] = [];
 
     const yTop = bUpChest.pos.y + 0.04;
-    const yBot = ankleY + 0.07;
-    const backStartZ = slUpChest.cz + slUpChest.rz + 0.022;
-    const backEndZ = slHips.cz + slHips.rz + 0.14;
+    const yBot = ankleY + 0.06;
+    const backStartZ = slUpChest.cz + slUpChest.rz + 0.024;
+    const backEndZ = slHips.cz + slHips.rz + 0.16;
 
     for (let r = 0; r <= cloakRows; r++) {
       const v = r / cloakRows;
       const y = THREE.MathUtils.lerp(yTop, yBot, v);
-      const halfW = THREE.MathUtils.lerp(slUpChest.rx * 1.05, slUpChest.rx * 1.95, v);
+      const halfW = THREE.MathUtils.lerp(slUpChest.rx * 1.08, slUpChest.rx * 2.05, v);
       const zBack = THREE.MathUtils.lerp(backStartZ, backEndZ, v);
       const legInf = THREE.MathUtils.smoothstep(v, 0.35, 1.0) * 0.55;
 
@@ -1480,11 +1605,11 @@ export function tailorXianxiaOutfitOntoVrm(vrm: VRM, theme: GarmentThemeId): THR
         const u = c / cloakCols;
         const nx = (u - 0.5) * 2;
         const px = nx * halfW;
-        const drape = Math.cos(nx * Math.PI * 0.5) * 0.036 + Math.sin(u * Math.PI * 5) * 0.012 * v;
+        const drape = Math.cos(nx * Math.PI * 0.5) * 0.040 + Math.sin(u * Math.PI * 6) * 0.015 * v;
         cPos.push(px, y, zBack + drape);
-        cUv.push(u, v);
+        cUv.push(u * 2.0, v * 2.5);
 
-        const legBone = nx >= 0 ? bRUpLeg.idx : bLUpLeg.idx;
+        const legBone = nx >= 0 ? bLUpLeg.idx : bRUpLeg.idx;
         cIdx.push(bUpChest.idx, bHips.idx, legBone, 0);
         cWgt.push((1 - v) * (1 - legInf), v * (1 - legInf), legInf, 0);
       }
@@ -1496,13 +1621,14 @@ export function tailorXianxiaOutfitOntoVrm(vrm: VRM, theme: GarmentThemeId): THR
         const b = (r + 1) * cStride + c;
         const d = r * cStride + (c + 1);
         const e = (r + 1) * cStride + (c + 1);
-        cTri.push(a, b, d);
-        cTri.push(b, e, d);
+        cTri.push(a, b, d, b, e, d);
       }
     }
     const cloakGeo = new THREE.BufferGeometry();
     cloakGeo.setAttribute('position', new THREE.Float32BufferAttribute(cPos, 3));
-    cloakGeo.setAttribute('uv', new THREE.Float32BufferAttribute(cUv, 2));
+    const cUvAttr = new THREE.Float32BufferAttribute(cUv, 2);
+    cloakGeo.setAttribute('uv', cUvAttr);
+    cloakGeo.setAttribute('uv1', cUvAttr.clone());
     cloakGeo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(cIdx, 4));
     cloakGeo.setAttribute('skinWeight', new THREE.Float32BufferAttribute(cWgt, 4));
     cloakGeo.setIndex(cTri);

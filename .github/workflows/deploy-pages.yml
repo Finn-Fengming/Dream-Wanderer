@@ -30,7 +30,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build v2.0 production bundle
+      - name: Build v4.0 production bundle
         run: npm run build
 
       - name: Configure Pages

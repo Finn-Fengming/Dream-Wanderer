@@ -763,7 +763,15 @@ export class SoulsUiManager {
     let activeBarTarget: { name: string; hp: number; maxHp: number } | null = null;
     if (boss.state !== 'dormant' && boss.alive) {
       activeBarTarget = boss;
-    } else if (eliteGolem && eliteGolem.alive && eliteGolem.aiState !== 'idle') {
+    } else if (
+      !inBossArena &&
+      !boss.defeated &&
+      eliteGolem &&
+      eliteGolem.alive &&
+      eliteGolem.aiState !== 'idle' &&
+      player.pos.distanceTo(eliteGolem.pos) < 30 &&
+      player.pos.z > -20
+    ) {
       activeBarTarget = eliteGolem;
     }
 

@@ -68,7 +68,7 @@ export function buildProceduralTextures(): QionghuaTextureSet {
   tjC.fillRect(0, 0, tjSize, tjSize);
 
   // Tile real photogrammetry marble veins across the 2048px medallion!
-  const marbleImg = gameAssets.pbr?.jadeMarble?.color?.image as CanvasImageSource | undefined;
+  const marbleImg = gameAssets.pbr?.whiteJade?.color?.image as CanvasImageSource | undefined;
   if (marbleImg) {
     tjC.save();
     tjC.globalAlpha = 0.58;
@@ -300,14 +300,14 @@ export function buildProceduralTextures(): QionghuaTextureSet {
   }
 
   return {
-    jadeTileMap: gameAssets.pbr.jadeMarble.color,
-    jadeTileBump: gameAssets.pbr.jadeMarble.normal,
-    jadeTileRoughness: gameAssets.pbr.jadeMarble.roughness,
+    jadeTileMap: gameAssets.pbr.whiteJade.color,
+    jadeTileBump: gameAssets.pbr.whiteJade.normal,
+    jadeTileRoughness: gameAssets.pbr.whiteJade.roughness,
     taijiFloorMap,
     taijiFloorBump,
     taijiEmissiveMap,
-    pillarMap: gameAssets.pbr.stone.color,
-    pillarBump: gameAssets.pbr.stone.normal,
+    pillarMap: gameAssets.pbr.ashlarStone.color,
+    pillarBump: gameAssets.pbr.ashlarStone.normal,
     snowflakeTex: new THREE.CanvasTexture(cSnow),
     softGlowTex: new THREE.CanvasTexture(cGlow),
     runeRingTex: new THREE.CanvasTexture(cRune),

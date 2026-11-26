@@ -46,7 +46,9 @@ const RibbonTrailShader = {
       float streak = noise(vec2(vAge * 9.0 - uTime * 8.5, vUv.y * 14.0));
       float erode = smoothstep(vAge * 0.88, vAge * 0.88 + 0.25, streak + outerBright * 0.45);
 
-      vec3 col = mix(uColorEdge, uColorCore, pow(outerBright, 2.2));
+      // Dual-layer noise-eroded Xianxia sword arc: bright outer frost/solar edge + dark ink-jade wake,
+      // strictly capped <= 2.15 HDR peak so Bloom glows vibrantly without clipping to flat white!
+      vec3 col = min(mix(uColorEdge, uColorCore, pow(outerBright, 2.0)), vec3(2.15));
       float alpha = outerBright * tipTaper * erode * 0.92;
       if (alpha < 0.02) discard;
 
